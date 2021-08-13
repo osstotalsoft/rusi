@@ -1,0 +1,49 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rusi-operator
+subjects:
+- kind: ServiceAccount
+  name: rusi-operator
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: rusi-operator-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rusi-role-tokenreview-binding
+subjects:
+- kind: ServiceAccount
+  name: rusi-operator
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rusi-operator-admin
+rules:
+- apiGroups: ["*"]
+  resources: ["serviceaccounts", "deployments", "services", "configmaps", "secrets", "components", "configurations", "leases"]
+  verbs: ["get"]
+- apiGroups: ["*"]
+  resources: ["deployments", "services", "components", "configurations", "subscriptions", "leases"]
+  verbs: ["list"]
+- apiGroups: ["*"]
+  resources: ["deployments", "services", "components", "configurations", "subscriptions", "leases"]
+  verbs: ["watch"]
+- apiGroups: ["*"]
+  resources: ["services", "secrets", "configmaps", "leases", "services/finalizers", "deployments/finalizers"]
+  verbs: ["update"]
+- apiGroups: ["*"]
+  resources: ["services", "leases"]
+  verbs: ["delete"]
+- apiGroups: ["*"]
+  resources: ["deployments", "services", "configmaps", "events", "leases"]
+  verbs: ["create"]

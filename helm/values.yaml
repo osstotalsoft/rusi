@@ -1,0 +1,10 @@
+global:
+  registry: tsacr.azurecr.io/rusiio
+  tag: "0.0.1"
+  dnsSuffix: ".cluster.local"
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: "registrykey"
+  nodeSelector: {}
+  prometheus:
+    enabled: false
+    port: 9090
