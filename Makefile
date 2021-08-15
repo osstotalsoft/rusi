@@ -8,7 +8,7 @@ BINARIES ?= rusid injector
 # Helm template and install setting
 HELM:=helm
 RELEASE_NAME?=rusi
-DAPR_NAMESPACE?=rusi-system
+RUSI_NAMESPACE?=rusi-system
 HELM_CHART_ROOT:=./helm
 
 ################################################################################

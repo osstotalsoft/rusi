@@ -87,6 +87,8 @@ spec:
 {{- end }}
         - name: SIDECAR_IMAGE_PULL_POLICY
           value: "{{ .Values.sidecarImagePullPolicy }}"
+        - name: SIDECAR_IMAGE_PULL_SECRETS
+          value: "{{ .Values.global.imagePullSecrets }}"
         - name: NAMESPACE
           valueFrom:
             fieldRef:
