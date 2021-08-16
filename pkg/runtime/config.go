@@ -3,7 +3,7 @@ package runtime
 import "fmt"
 
 const (
-	DefaultGRPCPort    = 50001
+	DefaultGRPCPort    = 50003
 	DefaultProfilePort = 7777
 	// DefaultMetricsPort is the default port for metrics endpoints.
 	DefaultMetricsPort = 9090

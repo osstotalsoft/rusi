@@ -16,10 +16,10 @@ const (
 
 var dns1123LabelRegexp = regexp.MustCompile("^" + dns1123LabelFmt + "$")
 
-// ValidateKubernetesAppID returns a bool that indicates whether a dapr app id is valid for the Kubernetes platform.
+// ValidateKubernetesAppID returns a bool that indicates whether a rusi app id is valid for the Kubernetes platform.
 func ValidateKubernetesAppID(appID string) error {
 	if appID == "" {
-		return errors.New("value for the dapr.io/app-id annotation is empty")
+		return errors.New("value for the rusi.io/app-id annotation is empty")
 	}
 	r := isDNS1123Label(appID)
 	if len(r) == 0 {

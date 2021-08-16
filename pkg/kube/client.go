@@ -13,7 +13,7 @@ import (
 var (
 	clientSet      *kubernetes.Clientset
 	kubeConfig     *rest.Config
-	kubeConfigPath *string
+	kubeConfigPath string
 )
 
 func initKubeConfig() {
@@ -34,7 +34,7 @@ func GetConfig() *rest.Config {
 
 	conf, err := rest.InClusterConfig()
 	if err != nil {
-		conf, err = clientcmd.BuildConfigFromFlags("", *kubeConfigPath)
+		conf, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 		if err != nil {
 			panic(err)
 		}
@@ -50,9 +50,9 @@ func InitFlags(flagset *flag.FlagSet) {
 	}
 
 	if home := homedir.HomeDir(); home != "" {
-		flag.StringVar(kubeConfigPath, "kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+		flag.StringVar(&kubeConfigPath, "kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
-		flag.StringVar(kubeConfigPath, "kubeconfig", "", "absolute path to the kubeconfig file")
+		flag.StringVar(&kubeConfigPath, "kubeconfig", "", "absolute path to the kubeconfig file")
 	}
 }
 

@@ -34,7 +34,7 @@ const (
 	rusiMemoryRequestKey              = "rusi.io/sidecar-memory-request"
 	containersPath                    = "/spec/containers"
 	sidecarHTTPPort                   = 3500
-	sidecarAPIGRPCPort                = 50001
+	sidecarAPIGRPCPort                = 50003
 	userContainerRusiGRPCPortName     = "RUSI_GRPC_PORT"
 	sidecarGRPCPortName               = "rusi-grpc"
 	sidecarMetricsPortName            = "rusi-metrics"

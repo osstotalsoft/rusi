@@ -6,7 +6,6 @@ import (
 )
 
 // add env-vars from annotations.
-// see https://github.com/dapr/dapr/issues/2508.
 func ParseEnvString(envStr string) []corev1.EnvVar {
 	envVars := make([]corev1.EnvVar, 0)
 	envPairs := strings.Split(envStr, ",")
