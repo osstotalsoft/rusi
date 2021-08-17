@@ -17,8 +17,17 @@ HELM_CHART_ROOT:=./helm
 build-linux:
 	GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector
 
-run-protoc:
-	protoc proto/runtime/v1/* --go_out=.
+modtidy:
+	go mod tidy
+
+init-proto:
+	go get google.golang.org/protobuf/cmd/protoc-gen-go google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+clean-proto:
+	rm pkg/proto/runtime/v1/*.go
+
+gen-proto:
+	protoc proto/runtime/v1/* --go-grpc_out=. --go_out=.
 
 ################################################################################
 # Target: docker                                                               #
