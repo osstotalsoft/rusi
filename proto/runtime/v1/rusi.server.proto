@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package rusi.server.proto.runtime.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "pkg/proto/runtime/v1";
+
+service Rusi {
+
+  // Publishes events to the specific topic.
+  rpc Publish(PublishRequest) returns (google.protobuf.Empty) {}
+}
+
+// PublishRequest is the message to publish data to pubsub topic
+message PublishRequest {
+  // The name of the pubsub component
+  string pubsub_name = 1;
+
+  // The pubsub topic
+  string topic = 2;
+
+  // The data which will be published to topic.
+  bytes data = 3;
+
+  // The content type for the data (optional).
+  string data_content_type = 4;
+
+  // The metadata passing to pub components
+  //
+  // metadata property:
+  // - key : the key of the message.
+  map<string,string> metadata = 5;
+}

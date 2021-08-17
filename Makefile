@@ -17,6 +17,9 @@ HELM_CHART_ROOT:=./helm
 build-linux:
 	GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector
 
+run-protoc:
+	protoc proto/runtime/v1/* --go_out=.
+
 ################################################################################
 # Target: docker                                                               #
 ################################################################################
