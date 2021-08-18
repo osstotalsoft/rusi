@@ -2,34 +2,28 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
-	"net"
+	runtime_grpc "rusi/pkg/api/grpc"
 	"rusi/pkg/runtime"
 )
 
 func main() {
 
 	klog.InitFlags(flag.CommandLine)
+	defer klog.Flush()
 
 	cfg := runtime.NewRuntimeConfig()
 	cfg.AttachCmdFlags(flag.StringVar, flag.BoolVar)
 
 	flag.Parse()
 
-	rt := runtime.NewRuntime(cfg)
+	rusiService := runtime_grpc.NewRusiServer()
+	api := runtime_grpc.NewGrpcAPI(rusiService, cfg.RusiGRPCPort)
+	rt := runtime.NewRuntime(cfg, api)
 
-	klog.Infof("Rusid is starting on port %s", rt.Config.RusiGRPCPort)
-	defer klog.Flush()
+	klog.Infof("Rusid is starting on port %s", cfg.RusiGRPCPort)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%s", rt.Config.RusiGRPCPort))
-	if err != nil {
-		klog.Fatalf("failed to listen: %v", err)
-	}
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
-	if err = grpcServer.Serve(lis); err != nil {
+	if err := rt.Run(); err != nil {
 		klog.Error(err)
 	}
 }

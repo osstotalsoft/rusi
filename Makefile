@@ -27,7 +27,7 @@ clean-proto:
 	rm pkg/proto/runtime/v1/*.go
 
 gen-proto:
-	protoc proto/runtime/v1/* --go-grpc_out=. --go_out=.
+	protoc proto/runtime/v1/* --go-grpc_out=. --go_out=. --go-grpc_opt=require_unimplemented_servers=false
 
 ################################################################################
 # Target: docker                                                               #
