@@ -1,5 +1,5 @@
 package messaging
 
 type Subscriber interface {
-	Subscribe()
+	Subscribe(topic string, handler Handler) error
 }
