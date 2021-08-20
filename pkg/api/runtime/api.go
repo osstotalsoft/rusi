@@ -1,4 +1,4 @@
-package api
+package runtime
 
 import (
 	"rusi/pkg/messaging"
@@ -6,5 +6,4 @@ import (
 
 type Api interface {
 	Publish(env *messaging.MessageEnvelope) error
-	Serve() error
 }

@@ -7,12 +7,11 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"k8s.io/klog/v2"
 	"net"
-	"rusi/pkg/api"
 	"rusi/pkg/messaging"
 	v1 "rusi/pkg/proto/runtime/v1"
 )
 
-func NewGrpcAPI(server v1.RusiServer, port string) api.Api {
+func NewGrpcAPI(server v1.RusiServer, port string) *grpcApi {
 	return &grpcApi{port, server}
 }
 

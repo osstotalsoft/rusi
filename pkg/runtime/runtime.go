@@ -1,17 +1,17 @@
 package runtime
 
 import (
-	"rusi/pkg/api"
+	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/components/pubsub"
 )
 
 type runtime struct {
 	config         Config
-	api            api.Api
+	api            runtime_api.Api
 	pubSubRegistry pubsub.Registry
 }
 
-func NewRuntime(config Config, api api.Api) *runtime {
+func NewRuntime(config Config, api runtime_api.Api) *runtime {
 	return &runtime{
 		config:         config,
 		api:            api,
@@ -19,7 +19,7 @@ func NewRuntime(config Config, api api.Api) *runtime {
 	}
 }
 
-func (rt *runtime) Run(opts ...Option) error {
+func (rt *runtime) ConfigureOptions(opts ...Option) error {
 
 	var runtimeOpts runtimeOpts
 	for _, opt := range opts {
@@ -28,5 +28,5 @@ func (rt *runtime) Run(opts ...Option) error {
 
 	rt.pubSubRegistry.Register(runtimeOpts.pubsubs...)
 
-	return rt.api.Serve()
+	return nil
 }
