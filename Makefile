@@ -29,8 +29,11 @@ clean-proto:
 gen-proto:
 	protoc proto/runtime/v1/* --go-grpc_out=. --go_out=. --go-grpc_opt=require_unimplemented_servers=false
 
-################################################################################
-# Target: docker                                                               #
-################################################################################
-include docker/docker.mk
+upgrade-all:
+	go get -u ./...
+	go mod tidy
 
+
+
+include docker/docker.mk
+include pkg/operator/tools/generate_kube_crd.mk

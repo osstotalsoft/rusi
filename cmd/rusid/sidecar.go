@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
 	kube.InitFlags(nil)
 	defer klog.Flush()
@@ -19,8 +20,6 @@ func main() {
 	cfg := runtime.NewRuntimeConfig()
 	cfg.AttachCmdFlags(flag.StringVar, flag.BoolVar)
 	flag.Parse()
-
-	_ = kube.ListCRD()
 
 	rusiService := grpc.NewRusiServer()
 	api := grpc.NewGrpcAPI(rusiService, cfg.RusiGRPCPort)

@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
 	kube.InitFlags(nil)
 

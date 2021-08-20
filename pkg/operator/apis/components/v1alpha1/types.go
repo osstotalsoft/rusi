@@ -1,13 +1,16 @@
 package v1alpha1
 
 import (
-	"strconv"
-
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strconv"
 )
 
-// Component describes an Dapr component type.
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Component describes an Rusi component type.
 type Component struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -51,9 +54,9 @@ type Auth struct {
 	SecretStore string `json:"secretStore"`
 }
 
-// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ComponentList is a list of Dapr components.
+// ComponentList is a list of Rusi components.
 type ComponentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
