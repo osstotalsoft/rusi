@@ -21,8 +21,8 @@ package versioned
 import (
 	"fmt"
 	componentsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/components/v1alpha1"
-	componentsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/configuration/v1alpha1"
-	componentsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/subscriptions/v1alpha1"
+	configurationv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/configuration/v1alpha1"
+	subscriptionsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/subscriptions/v1alpha1"
 
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -32,17 +32,17 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1Interface
-	ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1Interface
-	ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1Interface
+	ConfigurationV1alpha1() configurationv1alpha1.ConfigurationV1alpha1Interface
+	SubscriptionsV1alpha1() subscriptionsv1alpha1.SubscriptionsV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	componentsV1alpha1 *componentsv1alpha1.ComponentsV1alpha1Client
-	componentsV1alpha1 *componentsv1alpha1.ComponentsV1alpha1Client
-	componentsV1alpha1 *componentsv1alpha1.ComponentsV1alpha1Client
+	componentsV1alpha1    *componentsv1alpha1.ComponentsV1alpha1Client
+	configurationV1alpha1 *configurationv1alpha1.ConfigurationV1alpha1Client
+	subscriptionsV1alpha1 *subscriptionsv1alpha1.SubscriptionsV1alpha1Client
 }
 
 // ComponentsV1alpha1 retrieves the ComponentsV1alpha1Client
@@ -50,14 +50,14 @@ func (c *Clientset) ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1In
 	return c.componentsV1alpha1
 }
 
-// ComponentsV1alpha1 retrieves the ComponentsV1alpha1Client
-func (c *Clientset) ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1Interface {
-	return c.componentsV1alpha1
+// ConfigurationV1alpha1 retrieves the ConfigurationV1alpha1Client
+func (c *Clientset) ConfigurationV1alpha1() configurationv1alpha1.ConfigurationV1alpha1Interface {
+	return c.configurationV1alpha1
 }
 
-// ComponentsV1alpha1 retrieves the ComponentsV1alpha1Client
-func (c *Clientset) ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1Interface {
-	return c.componentsV1alpha1
+// SubscriptionsV1alpha1 retrieves the SubscriptionsV1alpha1Client
+func (c *Clientset) SubscriptionsV1alpha1() subscriptionsv1alpha1.SubscriptionsV1alpha1Interface {
+	return c.subscriptionsV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -85,11 +85,11 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.componentsV1alpha1, err = componentsv1alpha1.NewForConfig(&configShallowCopy)
+	cs.configurationV1alpha1, err = configurationv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
-	cs.componentsV1alpha1, err = componentsv1alpha1.NewForConfig(&configShallowCopy)
+	cs.subscriptionsV1alpha1, err = subscriptionsv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +106,8 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.componentsV1alpha1 = componentsv1alpha1.NewForConfigOrDie(c)
-	cs.componentsV1alpha1 = componentsv1alpha1.NewForConfigOrDie(c)
-	cs.componentsV1alpha1 = componentsv1alpha1.NewForConfigOrDie(c)
+	cs.configurationV1alpha1 = configurationv1alpha1.NewForConfigOrDie(c)
+	cs.subscriptionsV1alpha1 = subscriptionsv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -117,8 +117,8 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.componentsV1alpha1 = componentsv1alpha1.New(c)
-	cs.componentsV1alpha1 = componentsv1alpha1.New(c)
-	cs.componentsV1alpha1 = componentsv1alpha1.New(c)
+	cs.configurationV1alpha1 = configurationv1alpha1.New(c)
+	cs.subscriptionsV1alpha1 = subscriptionsv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

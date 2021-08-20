@@ -175,18 +175,18 @@ type SharedInformerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
 	Components() components.Interface
-	Components() configuration.Interface
-	Components() subscriptions.Interface
+	Configuration() configuration.Interface
+	Subscriptions() subscriptions.Interface
 }
 
 func (f *sharedInformerFactory) Components() components.Interface {
 	return components.New(f, f.namespace, f.tweakListOptions)
 }
 
-func (f *sharedInformerFactory) Components() configuration.Interface {
+func (f *sharedInformerFactory) Configuration() configuration.Interface {
 	return configuration.New(f, f.namespace, f.tweakListOptions)
 }
 
-func (f *sharedInformerFactory) Components() subscriptions.Interface {
+func (f *sharedInformerFactory) Subscriptions() subscriptions.Interface {
 	return subscriptions.New(f, f.namespace, f.tweakListOptions)
 }

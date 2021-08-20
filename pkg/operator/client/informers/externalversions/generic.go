@@ -21,6 +21,8 @@ package externalversions
 import (
 	"fmt"
 	v1alpha1 "rusi/pkg/operator/apis/components/v1alpha1"
+	configurationv1alpha1 "rusi/pkg/operator/apis/configuration/v1alpha1"
+	subscriptionsv1alpha1 "rusi/pkg/operator/apis/subscriptions/v1alpha1"
 
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -55,26 +57,14 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=components.rusi.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("components"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Components().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("configurations"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Configurations().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("subscriptions"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Subscriptions().Informer()}, nil
 
-		// Group=components.rusi.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("components"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Components().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("configurations"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Configurations().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("subscriptions"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Subscriptions().Informer()}, nil
+		// Group=configuration.rusi.io, Version=v1alpha1
+	case configurationv1alpha1.SchemeGroupVersion.WithResource("configurations"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Configuration().V1alpha1().Configurations().Informer()}, nil
 
-		// Group=components.rusi.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("components"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Components().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("configurations"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Configurations().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("subscriptions"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Components().V1alpha1().Subscriptions().Informer()}, nil
+		// Group=subscriptions.rusi.io, Version=v1alpha1
+	case subscriptionsv1alpha1.SchemeGroupVersion.WithResource("subscriptions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Subscriptions().V1alpha1().Subscriptions().Informer()}, nil
 
 	}
 

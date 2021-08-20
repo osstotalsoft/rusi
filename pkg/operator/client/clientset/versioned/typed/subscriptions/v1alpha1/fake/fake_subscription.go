@@ -32,13 +32,13 @@ import (
 
 // FakeSubscriptions implements SubscriptionInterface
 type FakeSubscriptions struct {
-	Fake *FakeComponentsV1alpha1
+	Fake *FakeSubscriptionsV1alpha1
 	ns   string
 }
 
-var subscriptionsResource = schema.GroupVersionResource{Group: "components.rusi.io", Version: "v1alpha1", Resource: "subscriptions"}
+var subscriptionsResource = schema.GroupVersionResource{Group: "subscriptions.rusi.io", Version: "v1alpha1", Resource: "subscriptions"}
 
-var subscriptionsKind = schema.GroupVersionKind{Group: "components.rusi.io", Version: "v1alpha1", Kind: "Subscription"}
+var subscriptionsKind = schema.GroupVersionKind{Group: "subscriptions.rusi.io", Version: "v1alpha1", Kind: "Subscription"}
 
 // Get takes name of the subscription, and returns the corresponding subscription object, and an error if there is any.
 func (c *FakeSubscriptions) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Subscription, err error) {

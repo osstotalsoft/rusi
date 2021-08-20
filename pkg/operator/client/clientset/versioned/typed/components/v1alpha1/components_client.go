@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "rusi/pkg/operator/apis/subscriptions/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/apis/components/v1alpha1"
 	"rusi/pkg/operator/client/clientset/versioned/scheme"
 
 	rest "k8s.io/client-go/rest"
@@ -27,7 +27,7 @@ import (
 
 type ComponentsV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	SubscriptionsGetter
+	ComponentsGetter
 }
 
 // ComponentsV1alpha1Client is used to interact with features provided by the components.rusi.io group.
@@ -35,8 +35,8 @@ type ComponentsV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ComponentsV1alpha1Client) Subscriptions(namespace string) SubscriptionInterface {
-	return newSubscriptions(c, namespace)
+func (c *ComponentsV1alpha1Client) Components(namespace string) ComponentInterface {
+	return newComponents(c, namespace)
 }
 
 // NewForConfig creates a new ComponentsV1alpha1Client for the given config.

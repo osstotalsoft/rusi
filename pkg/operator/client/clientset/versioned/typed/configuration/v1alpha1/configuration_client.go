@@ -19,28 +19,28 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "rusi/pkg/operator/apis/subscriptions/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/apis/configuration/v1alpha1"
 	"rusi/pkg/operator/client/clientset/versioned/scheme"
 
 	rest "k8s.io/client-go/rest"
 )
 
-type ComponentsV1alpha1Interface interface {
+type ConfigurationV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	SubscriptionsGetter
+	ConfigurationsGetter
 }
 
-// ComponentsV1alpha1Client is used to interact with features provided by the components.rusi.io group.
-type ComponentsV1alpha1Client struct {
+// ConfigurationV1alpha1Client is used to interact with features provided by the configuration.rusi.io group.
+type ConfigurationV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ComponentsV1alpha1Client) Subscriptions(namespace string) SubscriptionInterface {
-	return newSubscriptions(c, namespace)
+func (c *ConfigurationV1alpha1Client) Configurations(namespace string) ConfigurationInterface {
+	return newConfigurations(c, namespace)
 }
 
-// NewForConfig creates a new ComponentsV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*ComponentsV1alpha1Client, error) {
+// NewForConfig creates a new ConfigurationV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*ConfigurationV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -49,12 +49,12 @@ func NewForConfig(c *rest.Config) (*ComponentsV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ComponentsV1alpha1Client{client}, nil
+	return &ConfigurationV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new ComponentsV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new ConfigurationV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *ComponentsV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *ConfigurationV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -62,9 +62,9 @@ func NewForConfigOrDie(c *rest.Config) *ComponentsV1alpha1Client {
 	return client
 }
 
-// New creates a new ComponentsV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *ComponentsV1alpha1Client {
-	return &ComponentsV1alpha1Client{c}
+// New creates a new ConfigurationV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *ConfigurationV1alpha1Client {
+	return &ConfigurationV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -82,7 +82,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *ComponentsV1alpha1Client) RESTClient() rest.Interface {
+func (c *ConfigurationV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

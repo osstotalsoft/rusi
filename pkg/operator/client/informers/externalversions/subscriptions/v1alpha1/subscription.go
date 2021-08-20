@@ -62,13 +62,13 @@ func NewFilteredSubscriptionInformer(client versioned.Interface, namespace strin
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ComponentsV1alpha1().Subscriptions(namespace).List(context.TODO(), options)
+				return client.SubscriptionsV1alpha1().Subscriptions(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ComponentsV1alpha1().Subscriptions(namespace).Watch(context.TODO(), options)
+				return client.SubscriptionsV1alpha1().Subscriptions(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&subscriptionsv1alpha1.Subscription{},

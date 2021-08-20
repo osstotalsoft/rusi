@@ -29,8 +29,8 @@ type FakeComponentsV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeComponentsV1alpha1) Subscriptions(namespace string) v1alpha1.SubscriptionInterface {
-	return &FakeSubscriptions{c, namespace}
+func (c *FakeComponentsV1alpha1) Components(namespace string) v1alpha1.ComponentInterface {
+	return &FakeComponents{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

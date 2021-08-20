@@ -25,22 +25,22 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type ComponentsV1alpha1Interface interface {
+type SubscriptionsV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	SubscriptionsGetter
 }
 
-// ComponentsV1alpha1Client is used to interact with features provided by the components.rusi.io group.
-type ComponentsV1alpha1Client struct {
+// SubscriptionsV1alpha1Client is used to interact with features provided by the subscriptions.rusi.io group.
+type SubscriptionsV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ComponentsV1alpha1Client) Subscriptions(namespace string) SubscriptionInterface {
+func (c *SubscriptionsV1alpha1Client) Subscriptions(namespace string) SubscriptionInterface {
 	return newSubscriptions(c, namespace)
 }
 
-// NewForConfig creates a new ComponentsV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*ComponentsV1alpha1Client, error) {
+// NewForConfig creates a new SubscriptionsV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*SubscriptionsV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -49,12 +49,12 @@ func NewForConfig(c *rest.Config) (*ComponentsV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ComponentsV1alpha1Client{client}, nil
+	return &SubscriptionsV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new ComponentsV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new SubscriptionsV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *ComponentsV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *SubscriptionsV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -62,9 +62,9 @@ func NewForConfigOrDie(c *rest.Config) *ComponentsV1alpha1Client {
 	return client
 }
 
-// New creates a new ComponentsV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *ComponentsV1alpha1Client {
-	return &ComponentsV1alpha1Client{c}
+// New creates a new SubscriptionsV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *SubscriptionsV1alpha1Client {
+	return &SubscriptionsV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -82,7 +82,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *ComponentsV1alpha1Client) RESTClient() rest.Interface {
+func (c *SubscriptionsV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

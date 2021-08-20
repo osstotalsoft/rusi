@@ -8,6 +8,7 @@ import (
 	"rusi/pkg/kube"
 	"rusi/pkg/messaging"
 	natsstreaming "rusi/pkg/messaging/nats"
+	"rusi/pkg/operator"
 	"rusi/pkg/runtime"
 )
 
@@ -20,6 +21,8 @@ func main() {
 	cfg := runtime.NewRuntimeConfig()
 	cfg.AttachCmdFlags(flag.StringVar, flag.BoolVar)
 	flag.Parse()
+
+	_ = operator.ListComponents()
 
 	rusiService := grpc.NewRusiServer()
 	api := grpc.NewGrpcAPI(rusiService, cfg.RusiGRPCPort)

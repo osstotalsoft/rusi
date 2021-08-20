@@ -62,13 +62,13 @@ func NewFilteredConfigurationInformer(client versioned.Interface, namespace stri
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ComponentsV1alpha1().Configurations(namespace).List(context.TODO(), options)
+				return client.ConfigurationV1alpha1().Configurations(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ComponentsV1alpha1().Configurations(namespace).Watch(context.TODO(), options)
+				return client.ConfigurationV1alpha1().Configurations(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&configurationv1alpha1.Configuration{},
