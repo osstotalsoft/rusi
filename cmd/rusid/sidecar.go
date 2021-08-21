@@ -22,13 +22,13 @@ func main() {
 	cfg.AttachCmdFlags(flag.StringVar, flag.BoolVar)
 	flag.Parse()
 
-	_ = operator.ListComponents()
+	compProviderFunc := operator.ListComponents
 
 	rusiService := grpc.NewRusiServer()
 	api := grpc.NewGrpcAPI(rusiService, cfg.RusiGRPCPort)
-	rt := runtime.NewRuntime(cfg, api)
+	rt := runtime.NewRuntime(cfg, api, compProviderFunc)
 
-	err := rt.ConfigureOptions(
+	err := rt.Run(
 		runtime.WithPubSubs(
 			pubsub.New("natsstreaming", func() messaging.PubSub {
 				return natsstreaming.NewNATSStreamingPubSub()

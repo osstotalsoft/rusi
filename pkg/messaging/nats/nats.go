@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"k8s.io/klog/v2"
 	"math/rand"
-	"rusi/pkg/components"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	"strconv"
@@ -64,20 +63,20 @@ func NewNATSStreamingPubSub() messaging.PubSub {
 	return &natsStreamingPubSub{}
 }
 
-func parseNATSStreamingMetadata(meta components.Metadata) (options, error) {
+func parseNATSStreamingMetadata(properties map[string]string) (options, error) {
 	m := options{}
-	if val, ok := meta.Properties[natsURL]; ok && val != "" {
+	if val, ok := properties[natsURL]; ok && val != "" {
 		m.natsURL = val
 	} else {
 		return m, errors.New("nats-streaming error: missing nats URL")
 	}
-	if val, ok := meta.Properties[natsStreamingClusterID]; ok && val != "" {
+	if val, ok := properties[natsStreamingClusterID]; ok && val != "" {
 		m.natsStreamingClusterID = val
 	} else {
 		return m, errors.New("nats-streaming error: missing nats streaming cluster ID")
 	}
 
-	if val, ok := meta.Properties[subscriptionType]; ok {
+	if val, ok := properties[subscriptionType]; ok {
 		if val == subscriptionTypeTopic || val == subscriptionTypeQueueGroup {
 			m.subscriptionType = val
 		} else {
@@ -85,25 +84,25 @@ func parseNATSStreamingMetadata(meta components.Metadata) (options, error) {
 		}
 	}
 
-	if val, ok := meta.Properties[consumerID]; ok && val != "" {
+	if val, ok := properties[consumerID]; ok && val != "" {
 		m.natsQueueGroupName = val
 	} else {
 		return m, errors.New("nats-streaming error: missing queue group name")
 	}
 
-	if val, ok := meta.Properties[durableSubscriptionName]; ok && val != "" {
+	if val, ok := properties[durableSubscriptionName]; ok && val != "" {
 		m.durableSubscriptionName = val
 	}
 
-	if val, ok := meta.Properties[ackWaitTime]; ok && val != "" {
-		dur, err := time.ParseDuration(meta.Properties[ackWaitTime])
+	if val, ok := properties[ackWaitTime]; ok && val != "" {
+		dur, err := time.ParseDuration(properties[ackWaitTime])
 		if err != nil {
 			return m, fmt.Errorf("nats-streaming error %s ", err)
 		}
 		m.ackWaitTime = dur
 	}
-	if val, ok := meta.Properties[maxInFlight]; ok && val != "" {
-		max, err := strconv.ParseUint(meta.Properties[maxInFlight], 10, 64)
+	if val, ok := properties[maxInFlight]; ok && val != "" {
+		max, err := strconv.ParseUint(properties[maxInFlight], 10, 64)
 		if err != nil {
 			return m, fmt.Errorf("nats-streaming error in parsemetadata for maxInFlight: %s ", err)
 		}
@@ -115,9 +114,9 @@ func parseNATSStreamingMetadata(meta components.Metadata) (options, error) {
 
 	//nolint:nestif
 	// subscription options - only one can be used
-	if val, ok := meta.Properties[startAtSequence]; ok && val != "" {
+	if val, ok := properties[startAtSequence]; ok && val != "" {
 		// nats streaming accepts a uint64 as sequence
-		seq, err := strconv.ParseUint(meta.Properties[startAtSequence], 10, 64)
+		seq, err := strconv.ParseUint(properties[startAtSequence], 10, 64)
 		if err != nil {
 			return m, fmt.Errorf("nats-streaming error %s ", err)
 		}
@@ -125,36 +124,36 @@ func parseNATSStreamingMetadata(meta components.Metadata) (options, error) {
 			return m, errors.New("nats-streaming error: startAtSequence should be equal to or more than 1")
 		}
 		m.startAtSequence = seq
-	} else if val, ok := meta.Properties[startWithLastReceived]; ok {
+	} else if val, ok := properties[startWithLastReceived]; ok {
 		// only valid value is true
 		if val == startWithLastReceivedTrue {
 			m.startWithLastReceived = val
 		} else {
 			return m, errors.New("nats-streaming error: valid value for startWithLastReceived is true")
 		}
-	} else if val, ok := meta.Properties[deliverAll]; ok {
+	} else if val, ok := properties[deliverAll]; ok {
 		// only valid value is true
 		if val == deliverAllTrue {
 			m.deliverAll = val
 		} else {
 			return m, errors.New("nats-streaming error: valid value for deliverAll is true")
 		}
-	} else if val, ok := meta.Properties[deliverNew]; ok {
+	} else if val, ok := properties[deliverNew]; ok {
 		// only valid value is true
 		if val == deliverNewTrue {
 			m.deliverNew = val
 		} else {
 			return m, errors.New("nats-streaming error: valid value for deliverNew is true")
 		}
-	} else if val, ok := meta.Properties[startAtTimeDelta]; ok && val != "" {
-		dur, err := time.ParseDuration(meta.Properties[startAtTimeDelta])
+	} else if val, ok := properties[startAtTimeDelta]; ok && val != "" {
+		dur, err := time.ParseDuration(properties[startAtTimeDelta])
 		if err != nil {
 			return m, fmt.Errorf("nats-streaming error %s ", err)
 		}
 		m.startAtTimeDelta = dur
-	} else if val, ok := meta.Properties[startAtTime]; ok && val != "" {
+	} else if val, ok := properties[startAtTime]; ok && val != "" {
 		m.startAtTime = val
-		if val, ok := meta.Properties[startAtTimeFormat]; ok && val != "" {
+		if val, ok := properties[startAtTimeFormat]; ok && val != "" {
 			m.startAtTimeFormat = val
 		} else {
 			return m, errors.New("nats-streaming error: missing value for startAtTimeFormat")
@@ -164,8 +163,8 @@ func parseNATSStreamingMetadata(meta components.Metadata) (options, error) {
 	return m, nil
 }
 
-func (n *natsStreamingPubSub) Init(metadata components.Metadata) error {
-	m, err := parseNATSStreamingMetadata(metadata)
+func (n *natsStreamingPubSub) Init(properties map[string]string) error {
+	m, err := parseNATSStreamingMetadata(properties)
 	if err != nil {
 		return err
 	}

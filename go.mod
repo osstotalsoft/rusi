@@ -3,6 +3,7 @@ module rusi
 go 1.16
 
 require (
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/json-iterator/go v1.1.11
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/nats-io/nats-server/v2 v2.3.4 // indirect

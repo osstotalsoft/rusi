@@ -5,7 +5,7 @@ import "rusi/pkg/components/pubsub"
 type (
 	// runtimeOpts encapsulates the components to include in the runtime.
 	runtimeOpts struct {
-		pubsubs []pubsub.PubSub
+		pubsubs []pubsub.PubSubDefinition
 	}
 
 	// Option is a function that customizes the runtime.
@@ -13,7 +13,7 @@ type (
 )
 
 // WithPubSubs adds pubsub store components to the runtime.
-func WithPubSubs(pubsubs ...pubsub.PubSub) Option {
+func WithPubSubs(pubsubs ...pubsub.PubSubDefinition) Option {
 	return func(o *runtimeOpts) {
 		o.pubsubs = append(o.pubsubs, pubsubs...)
 	}

@@ -2,20 +2,21 @@ package pubsub
 
 import (
 	"github.com/pkg/errors"
+	"rusi/pkg/components"
 	"rusi/pkg/messaging"
 	"strings"
 )
 
 type (
-	// PubSub is a pub/sub component definition.
-	PubSub struct {
+	// PubSubDefinition is a pub/sub component definition.
+	PubSubDefinition struct {
 		Name          string
 		FactoryMethod func() messaging.PubSub
 	}
 
 	// Registry is the interface for callers to get registered pub-sub components.
 	Registry interface {
-		Register(components ...PubSub)
+		Register(components ...PubSubDefinition)
 		Create(name, version string) (messaging.PubSub, error)
 	}
 
@@ -25,8 +26,8 @@ type (
 )
 
 // New creates a PubSub.
-func New(name string, factoryMethod func() messaging.PubSub) PubSub {
-	return PubSub{
+func New(name string, factoryMethod func() messaging.PubSub) PubSubDefinition {
+	return PubSubDefinition{
 		Name:          name,
 		FactoryMethod: factoryMethod,
 	}
@@ -40,7 +41,7 @@ func NewRegistry() Registry {
 }
 
 // Register registers one or more new message buses.
-func (p *pubSubRegistry) Register(components ...PubSub) {
+func (p *pubSubRegistry) Register(components ...PubSubDefinition) {
 	for _, component := range components {
 		p.messageBuses[createFullName(component.Name)] = component.FactoryMethod
 	}
@@ -58,7 +59,12 @@ func (p *pubSubRegistry) getPubSub(name, version string) (func() messaging.PubSu
 	nameLower := strings.ToLower(name)
 	versionLower := strings.ToLower(version)
 	pubSubFn, ok := p.messageBuses[nameLower+"/"+versionLower]
-
+	if ok {
+		return pubSubFn, true
+	}
+	if components.IsInitialVersion(versionLower) {
+		pubSubFn, ok = p.messageBuses[nameLower]
+	}
 	return pubSubFn, ok
 }
 
