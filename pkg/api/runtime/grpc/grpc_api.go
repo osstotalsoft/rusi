@@ -4,14 +4,18 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"k8s.io/klog/v2"
 	"net"
+	"rusi/pkg/api/runtime"
 	"rusi/pkg/messaging"
+	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
 )
 
-func NewGrpcAPI(server v1.RusiServer, port string) *grpcApi {
+func NewGrpcAPI(server v1.RusiServer, port string) runtime.Api {
 	return &grpcApi{port, server}
 }
 
@@ -20,16 +24,8 @@ type grpcApi struct {
 	server v1.RusiServer
 }
 
-func (srv *grpcApi) Publish(env *messaging.MessageEnvelope) error {
-	_, err := srv.server.Publish(context.Background(), &v1.PublishRequest{
-		PubsubName:      "",
-		Topic:           "",
-		Data:            nil,
-		DataContentType: "",
-		Metadata:        nil,
-	})
-
-	return err
+func (srv *grpcApi) SendMessageToApp(env *messaging.MessageEnvelope) error {
+	return nil
 }
 
 func (srv *grpcApi) Serve() error {
@@ -44,13 +40,45 @@ func (srv *grpcApi) Serve() error {
 	return grpcServer.Serve(lis)
 }
 
-func NewRusiServer() v1.RusiServer {
-	return &server{}
+func NewRusiServer(getPublisherFunc func(pubsubName string) messaging.Publisher) v1.RusiServer {
+	return &server{getPublisherFunc}
 }
 
 type server struct {
+	getPublisherFunc func(pubsubName string) messaging.Publisher
 }
 
 func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*emptypb.Empty, error) {
-	return nil, nil
+
+	if request.PubsubName == "" {
+		err := status.Error(codes.InvalidArgument, runtime.ErrPubsubEmpty)
+		klog.V(4).Info(err)
+		return &emptypb.Empty{}, err
+	}
+
+	publisher := srv.getPublisherFunc(request.PubsubName)
+	if publisher == nil {
+		err := status.Errorf(codes.InvalidArgument, runtime.ErrPubsubNotFound, request.PubsubName)
+		klog.V(4).Info(err)
+		return &emptypb.Empty{}, err
+	}
+
+	if request.Topic == "" {
+		err := status.Errorf(codes.InvalidArgument, runtime.ErrTopicEmpty, request.PubsubName)
+		klog.V(4).Info(err)
+		return &emptypb.Empty{}, err
+	}
+
+	payload := make(map[string]interface{})
+	err := serdes.Unmarshal(request.Data, &payload)
+	if err != nil {
+		return &emptypb.Empty{}, err
+	}
+
+	err = publisher.Publish(request.Topic, &messaging.MessageEnvelope{
+		Headers: request.Metadata,
+		Payload: payload,
+	})
+
+	return &emptypb.Empty{}, err
 }

@@ -7,54 +7,54 @@ import (
 	"rusi/pkg/components"
 	"rusi/pkg/components/pubsub"
 	"rusi/pkg/messaging"
+	"rusi/pkg/runtime/service"
 	"strings"
 )
 
 type ComponentProviderFunc func() ([]components.Spec, error)
 
 type runtime struct {
-	config         Config
-	api            runtime_api.Api
-	pubSubRegistry pubsub.Registry
-	pubSubs        map[string]messaging.PubSub
-
+	config                Config
+	api                   runtime_api.Api
+	pubsubFactory         *pubsub.Factory
 	componentProviderFunc ComponentProviderFunc
 }
 
-func NewRuntime(config Config, api runtime_api.Api,
-	componentProviderFunc ComponentProviderFunc) *runtime {
+func NewRuntime(config Config, api runtime_api.Api, componentProviderFunc ComponentProviderFunc,
+	pubsubFactory *pubsub.Factory) *runtime {
 	return &runtime{
-		config:         config,
-		api:            api,
-		pubSubRegistry: pubsub.NewRegistry(),
-		pubSubs:        map[string]messaging.PubSub{},
-
+		config:                config,
+		api:                   api,
+		pubsubFactory:         pubsubFactory,
 		componentProviderFunc: componentProviderFunc,
 	}
 }
 
 func (rt *runtime) Run(opts ...Option) error {
-
 	var runtimeOpts runtimeOpts
 	for _, opt := range opts {
 		opt(&runtimeOpts)
 	}
 
-	rt.pubSubRegistry.Register(runtimeOpts.pubsubs...)
+	rt.pubsubFactory.Register(runtimeOpts.pubsubs...)
+
 	err := rt.initComponents()
 	if err != nil {
 		klog.Errorf("Error loading components %s", err.Error())
 		return err
 	}
-	return nil
+
+	klog.Infof("app id: %s", rt.config.AppID)
+
+	return rt.api.Serve()
 }
 
 func (rt *runtime) initComponents() error {
-
 	comps, err := rt.componentProviderFunc()
 	if err != nil {
 		return err
 	}
+
 	for _, item := range comps {
 		err = rt.initComponent(item)
 		if err != nil {
@@ -66,6 +66,7 @@ func (rt *runtime) initComponents() error {
 
 func (rt *runtime) initComponent(spec components.Spec) error {
 
+	klog.InfoS("loading component", "name", spec.Name, "type", spec.Type, "version", spec.Version)
 	categ := extractComponentCategory(spec)
 	switch categ {
 	case components.BindingsComponent:
@@ -79,24 +80,27 @@ func (rt *runtime) initComponent(spec components.Spec) error {
 }
 
 func (rt *runtime) initPubSub(spec components.Spec) error {
-	pubSub, err := rt.pubSubRegistry.Create(spec.Type, spec.Version)
+	name, ps, err := rt.pubsubFactory.Create(spec)
 	if err != nil {
-		klog.Warningf("error creating pub sub %s (%s/%s): %s", spec.Name, spec.Type, spec.Version, err)
 		return err
 	}
-
-	pubSub.Init(spec.Metadata)
-	if err != nil {
-		klog.Warningf("error initializing pub sub %s/%s: %s", spec.Type, spec.Version, err)
-		return err
+	if ps != nil {
+		err = rt.startSubscribing(name, ps)
+		if err != nil {
+			return err
+		}
 	}
-	rt.pubSubs[spec.Name] = pubSub
-
 	return nil
 }
 
-func (rt *runtime) GetPubSub(pubsubName string) messaging.PubSub {
-	return rt.pubSubs[pubsubName]
+func (rt *runtime) startSubscribing(name string, pubSub messaging.PubSub) error {
+
+	subscriberService := service.SubscriberService{}
+	if err := subscriberService.StartSubscribing(name, pubSub); err != nil {
+		klog.Errorf("error occurred while subscribing to pubsub %s: %s", name, err)
+		return err
+	}
+	return nil
 }
 
 func extractComponentCategory(spec components.Spec) components.ComponentCategory {

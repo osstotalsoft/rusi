@@ -21,25 +21,25 @@ func main() {
 	cfg := runtime.NewRuntimeConfig()
 	cfg.AttachCmdFlags(flag.StringVar, flag.BoolVar)
 	flag.Parse()
+	if err := cfg.Validate(); err != nil {
+		klog.Error(err)
+		return
+	}
 
 	compProviderFunc := operator.ListComponents
 
-	rusiService := grpc.NewRusiServer()
-	api := grpc.NewGrpcAPI(rusiService, cfg.RusiGRPCPort)
-	rt := runtime.NewRuntime(cfg, api, compProviderFunc)
+	pubsubFactory := pubsub.NewPubSubFactory(cfg.AppID)
+	rusiGrpcServer := grpc.NewRusiServer(pubsubFactory.GetPublisher)
+	api := grpc.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort)
+	rt := runtime.NewRuntime(cfg, api, compProviderFunc, pubsubFactory)
 
+	klog.Infof("Rusid is starting on port %s", cfg.RusiGRPCPort)
 	err := rt.Run(
 		runtime.WithPubSubs(
 			pubsub.New("natsstreaming", func() messaging.PubSub {
 				return natsstreaming.NewNATSStreamingPubSub()
 			}),
 		))
-	if err != nil {
-		klog.Error(err)
-	}
-
-	klog.Infof("Rusid is starting on port %s", cfg.RusiGRPCPort)
-	err = api.Serve()
 	if err != nil {
 		klog.Error(err)
 	}

@@ -1,6 +1,9 @@
 package runtime
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 const (
 	DefaultGRPCPort    = 50003
@@ -32,4 +35,16 @@ func (c *Config) AttachCmdFlags(
 	stringVar(&c.Config, "config", "", "Path to config file, or name of a configuration object")
 	stringVar(&c.AppID, "app-id", "", "A unique ID for Rusi. Used for Service Discovery and state")
 	boolVar(&c.EnableProfiling, "enable-profiling", false, "Enable profiling")
+}
+
+func (c *Config) Validate() error {
+	if c.AppID == "" {
+		return errors.New("app-id parameter cannot be empty")
+	}
+
+	if c.Config == "" {
+		return errors.New("config parameter cannot be empty")
+	}
+
+	return nil
 }

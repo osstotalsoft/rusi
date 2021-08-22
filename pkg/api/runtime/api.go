@@ -5,5 +5,6 @@ import (
 )
 
 type Api interface {
-	Publish(env *messaging.MessageEnvelope) error
+	SendMessageToApp(env *messaging.MessageEnvelope) error
+	Serve() error
 }
