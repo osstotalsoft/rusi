@@ -11,7 +11,6 @@ import (
 	"net"
 	"rusi/pkg/api/runtime"
 	"rusi/pkg/messaging"
-	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
 )
 
@@ -69,15 +68,9 @@ func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*em
 		return &emptypb.Empty{}, err
 	}
 
-	payload := make(map[string]interface{})
-	err := serdes.Unmarshal(request.Data, &payload)
-	if err != nil {
-		return &emptypb.Empty{}, err
-	}
-
-	err = publisher.Publish(request.Topic, &messaging.MessageEnvelope{
+	err := publisher.Publish(request.Topic, &messaging.MessageEnvelope{
 		Headers: request.Metadata,
-		Payload: payload,
+		Payload: string(request.Data),
 	})
 
 	return &emptypb.Empty{}, err
