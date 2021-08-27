@@ -11,6 +11,7 @@ import (
 	"net"
 	"rusi/pkg/api/runtime"
 	"rusi/pkg/messaging"
+	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
 )
 
@@ -39,12 +40,43 @@ func (srv *grpcApi) Serve() error {
 	return grpcServer.Serve(lis)
 }
 
-func NewRusiServer(getPublisherFunc func(pubsubName string) messaging.Publisher) v1.RusiServer {
-	return &server{getPublisherFunc}
+func NewRusiServer(getPublisherFunc func(pubsubName string) messaging.Publisher,
+	getSubscriberFunc func(pubsubName string) messaging.Subscriber) v1.RusiServer {
+	return &server{getPublisherFunc, getSubscriberFunc}
 }
 
 type server struct {
-	getPublisherFunc func(pubsubName string) messaging.Publisher
+	getPublisherFunc  func(pubsubName string) messaging.Publisher
+	getSubscriberFunc func(pubsubName string) messaging.Subscriber
+}
+
+func (srv *server) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Rusi_SubscribeServer) error {
+	ctx, cancel := context.WithCancel(subscribeServer.Context())
+	defer cancel()
+
+	unsub, err := srv.getSubscriberFunc(request.PubsubName).
+		Subscribe(request.Topic, func(env *messaging.MessageEnvelope) error {
+			data, err := serdes.Marshal(env.Payload)
+			if err != nil {
+				return err
+			}
+			err = subscribeServer.Send(&v1.ReceivedMessage{
+				Data:     data,
+				Metadata: env.Headers,
+			})
+			if err != nil {
+				klog.ErrorS(err, "oops")
+			}
+			return err
+		})
+
+	if err != nil {
+		return err
+	}
+	defer unsub()
+
+	<-ctx.Done()
+	return ctx.Err()
 }
 
 func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*emptypb.Empty, error) {

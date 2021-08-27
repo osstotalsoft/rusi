@@ -29,7 +29,7 @@ func main() {
 	compProviderFunc := operator.ListComponents
 
 	pubsubFactory := pubsub.NewPubSubFactory(cfg.AppID)
-	rusiGrpcServer := grpc.NewRusiServer(pubsubFactory.GetPublisher)
+	rusiGrpcServer := grpc.NewRusiServer(pubsubFactory.GetPublisher, pubsubFactory.GetSubscriber)
 	api := grpc.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort)
 	rt := runtime.NewRuntime(cfg, api, compProviderFunc, pubsubFactory)
 

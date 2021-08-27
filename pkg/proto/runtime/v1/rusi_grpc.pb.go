@@ -21,6 +21,8 @@ const _ = grpc.SupportPackageIsVersion7
 type RusiClient interface {
 	// Publishes events to the specific topic.
 	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Subscribe pushes events on the stream
+	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (Rusi_SubscribeClient, error)
 }
 
 type rusiClient struct {
@@ -40,12 +42,46 @@ func (c *rusiClient) Publish(ctx context.Context, in *PublishRequest, opts ...gr
 	return out, nil
 }
 
+func (c *rusiClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (Rusi_SubscribeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Rusi_ServiceDesc.Streams[0], "/rusi.proto.runtime.v1.Rusi/Subscribe", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &rusiSubscribeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Rusi_SubscribeClient interface {
+	Recv() (*ReceivedMessage, error)
+	grpc.ClientStream
+}
+
+type rusiSubscribeClient struct {
+	grpc.ClientStream
+}
+
+func (x *rusiSubscribeClient) Recv() (*ReceivedMessage, error) {
+	m := new(ReceivedMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // RusiServer is the server API for Rusi service.
 // All implementations should embed UnimplementedRusiServer
 // for forward compatibility
 type RusiServer interface {
 	// Publishes events to the specific topic.
 	Publish(context.Context, *PublishRequest) (*emptypb.Empty, error)
+	// Subscribe pushes events on the stream
+	Subscribe(*SubscribeRequest, Rusi_SubscribeServer) error
 }
 
 // UnimplementedRusiServer should be embedded to have forward compatible implementations.
@@ -54,6 +90,9 @@ type UnimplementedRusiServer struct {
 
 func (UnimplementedRusiServer) Publish(context.Context, *PublishRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
+}
+func (UnimplementedRusiServer) Subscribe(*SubscribeRequest, Rusi_SubscribeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
 
 // UnsafeRusiServer may be embedded to opt out of forward compatibility for this service.
@@ -85,6 +124,27 @@ func _Rusi_Publish_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Rusi_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RusiServer).Subscribe(m, &rusiSubscribeServer{stream})
+}
+
+type Rusi_SubscribeServer interface {
+	Send(*ReceivedMessage) error
+	grpc.ServerStream
+}
+
+type rusiSubscribeServer struct {
+	grpc.ServerStream
+}
+
+func (x *rusiSubscribeServer) Send(m *ReceivedMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Rusi_ServiceDesc is the grpc.ServiceDesc for Rusi service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -97,6 +157,12 @@ var Rusi_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Rusi_Publish_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Subscribe",
+			Handler:       _Rusi_Subscribe_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "proto/runtime/v1/rusi.proto",
 }

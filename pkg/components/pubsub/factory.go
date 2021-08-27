@@ -43,6 +43,10 @@ func (fact *Factory) GetPublisher(pubsubName string) messaging.Publisher {
 	return fact.pubSubs[pubsubName]
 }
 
+func (fact *Factory) GetSubscriber(pubsubName string) messaging.Subscriber {
+	return fact.pubSubs[pubsubName]
+}
+
 func (fact *Factory) Register(pubsubs ...PubSubDefinition) {
 	fact.pubSubRegistry.Register(pubsubs...)
 }

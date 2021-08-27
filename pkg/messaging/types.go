@@ -5,4 +5,5 @@ type MessageEnvelope struct {
 	Payload interface{}       `json:"payload"`
 }
 
+type UnsubscribeFunc func() error
 type Handler func(env *MessageEnvelope) error

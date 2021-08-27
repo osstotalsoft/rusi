@@ -194,18 +194,19 @@ func (n *natsStreamingPubSub) Publish(topic string, msg *messaging.MessageEnvelo
 		return err
 	}
 
+	klog.V(4).InfoS("Publishing message to NATS")
 	err = n.natStreamingConn.Publish(topic, msgBytes)
 	if err != nil {
 		return fmt.Errorf("nats-streaming: error from publish: %s", err)
 	}
-
+	klog.V(4).InfoS("Published message to NATS", "topic", topic, "message", *msg)
 	return nil
 }
 
-func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler) error {
-	natStreamingsubscriptionOptions, err := n.subscriptionOptions()
+func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler) (messaging.UnsubscribeFunc, error) {
+	stanOptions, err := n.subscriptionOptions()
 	if err != nil {
-		return fmt.Errorf("nats-streaming: error getting subscription options %s", err)
+		return nil, fmt.Errorf("nats-streaming: error getting subscription options %s", err)
 	}
 
 	natsMsgHandler := func(natsMsg *stan.Msg) {
@@ -223,17 +224,19 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler)
 		if err == nil {
 			// we only send a successful ACK if there is no error from Dapr runtime
 			natsMsg.Ack()
+			klog.V(4).InfoS("Message manually acknowledged")
 		}
 	}
 
+	var subs stan.Subscription
 	if n.options.subscriptionType == subscriptionTypeTopic {
-		_, err = n.natStreamingConn.Subscribe(topic, natsMsgHandler, natStreamingsubscriptionOptions...)
+		subs, err = n.natStreamingConn.Subscribe(topic, natsMsgHandler, stanOptions...)
 	} else if n.options.subscriptionType == subscriptionTypeQueueGroup {
-		_, err = n.natStreamingConn.QueueSubscribe(topic, n.options.natsQueueGroupName, natsMsgHandler, natStreamingsubscriptionOptions...)
+		subs, err = n.natStreamingConn.QueueSubscribe(topic, n.options.natsQueueGroupName, natsMsgHandler, stanOptions...)
 	}
 
-	if err != nil {
-		return fmt.Errorf("nats-streaming: subscribe error %s", err)
+	if err != nil || subs == nil {
+		return nil, fmt.Errorf("nats-streaming: subscribe error %s", err)
 	}
 	if n.options.subscriptionType == subscriptionTypeTopic {
 		klog.Infof("nats: subscribed to subject %s", topic)
@@ -241,7 +244,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler)
 		klog.Infof("nats: subscribed to subject %s with queue group %s", topic, n.options.natsQueueGroupName)
 	}
 
-	return nil
+	return subs.Unsubscribe, nil
 }
 
 func (n *natsStreamingPubSub) subscriptionOptions() ([]stan.SubscriptionOption, error) {
