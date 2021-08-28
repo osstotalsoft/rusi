@@ -24,10 +24,6 @@ type grpcApi struct {
 	server v1.RusiServer
 }
 
-func (srv *grpcApi) SendMessageToApp(env *messaging.MessageEnvelope) error {
-	return nil
-}
-
 func (srv *grpcApi) Serve() error {
 	grpcServer := grpc.NewServer()
 	v1.RegisterRusiServer(grpcServer, srv.server)
@@ -40,35 +36,35 @@ func (srv *grpcApi) Serve() error {
 	return grpcServer.Serve(lis)
 }
 
-func NewRusiServer(getPublisherFunc func(pubsubName string) messaging.Publisher,
-	getSubscriberFunc func(pubsubName string) messaging.Subscriber) v1.RusiServer {
-	return &server{getPublisherFunc, getSubscriberFunc}
+func NewRusiServer(publishHandler func(request messaging.PublishRequest) error,
+	subscribeHandler func(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)) v1.RusiServer {
+	return &server{publishHandler, subscribeHandler}
 }
 
 type server struct {
-	getPublisherFunc  func(pubsubName string) messaging.Publisher
-	getSubscriberFunc func(pubsubName string) messaging.Subscriber
+	publishHandler   func(request messaging.PublishRequest) error
+	subscribeHandler func(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)
 }
 
+// Subscribe creates a subscription
 func (srv *server) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Rusi_SubscribeServer) error {
 	ctx, cancel := context.WithCancel(subscribeServer.Context())
 	defer cancel()
 
-	unsub, err := srv.getSubscriberFunc(request.PubsubName).
-		Subscribe(request.Topic, func(env *messaging.MessageEnvelope) error {
-			data, err := serdes.Marshal(env.Payload)
+	unsub, err := srv.subscribeHandler(messaging.SubscribeRequest{
+		PubsubName: request.GetPubsubName(),
+		Topic:      request.GetTopic(),
+		Handler: func(env *messaging.MessageEnvelope) error {
+			data, err := serdes.Marshal(env)
 			if err != nil {
 				return err
 			}
-			err = subscribeServer.Send(&v1.ReceivedMessage{
+			return subscribeServer.Send(&v1.ReceivedMessage{
 				Data:     data,
 				Metadata: env.Headers,
 			})
-			if err != nil {
-				klog.ErrorS(err, "oops")
-			}
-			return err
-		})
+		},
+	})
 
 	if err != nil {
 		return err
@@ -87,23 +83,22 @@ func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*em
 		return &emptypb.Empty{}, err
 	}
 
-	publisher := srv.getPublisherFunc(request.PubsubName)
-	if publisher == nil {
-		err := status.Errorf(codes.InvalidArgument, runtime.ErrPubsubNotFound, request.PubsubName)
-		klog.V(4).Info(err)
-		return &emptypb.Empty{}, err
-	}
-
 	if request.Topic == "" {
 		err := status.Errorf(codes.InvalidArgument, runtime.ErrTopicEmpty, request.PubsubName)
 		klog.V(4).Info(err)
 		return &emptypb.Empty{}, err
 	}
 
-	err := publisher.Publish(request.Topic, &messaging.MessageEnvelope{
-		Headers: request.Metadata,
-		Payload: string(request.Data),
+	err := srv.publishHandler(messaging.PublishRequest{
+		PubsubName: request.GetPubsubName(),
+		Topic:      request.GetTopic(),
+		Data:       request.GetData(),
+		Metadata:   request.GetMetadata(),
 	})
 
+	if err != nil {
+		klog.V(4).Info(err)
+		err = status.Errorf(codes.Unknown, err.Error())
+	}
 	return &emptypb.Empty{}, err
 }

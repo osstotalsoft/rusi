@@ -5,19 +5,20 @@ import (
 	"rusi/pkg/messaging"
 )
 
-type SubscriberService struct {
+type subscriberService struct {
+	subscriber messaging.Subscriber
 }
 
-func (srv *SubscriberService) StartSubscribing(pubsubName string, pubsub messaging.PubSub) error {
+func NewtSubscriberService(subscriber messaging.Subscriber) *subscriberService {
+	return &subscriberService{subscriber}
+}
 
-	return nil
-
-	pubsub.Subscribe("TS1858.dapr_test_topic", func(env *messaging.MessageEnvelope) error {
-		klog.InfoS("message received on topic dapr_test_topic",
+func (srv *subscriberService) StartSubscribing(topic string, handler messaging.Handler) (messaging.UnsubscribeFunc, error) {
+	return srv.subscriber.Subscribe(topic, func(env *messaging.MessageEnvelope) error {
+		klog.InfoS("message received on", "topic", topic,
 			"payload", env.Payload, "headers", env.Headers)
 
-		return nil
+		//TODO prepare and invoke pipeline
+		return handler(env)
 	})
-
-	return nil
 }

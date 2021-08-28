@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/components"
@@ -15,22 +16,19 @@ type ComponentProviderFunc func() ([]components.Spec, error)
 
 type runtime struct {
 	config                Config
-	api                   runtime_api.Api
 	pubsubFactory         *pubsub.Factory
 	componentProviderFunc ComponentProviderFunc
 }
 
-func NewRuntime(config Config, api runtime_api.Api, componentProviderFunc ComponentProviderFunc,
-	pubsubFactory *pubsub.Factory) *runtime {
+func NewRuntime(config Config, componentProviderFunc ComponentProviderFunc) *runtime {
 	return &runtime{
 		config:                config,
-		api:                   api,
-		pubsubFactory:         pubsubFactory,
+		pubsubFactory:         pubsub.NewPubSubFactory(config.AppID),
 		componentProviderFunc: componentProviderFunc,
 	}
 }
 
-func (rt *runtime) Run(opts ...Option) error {
+func (rt *runtime) Load(opts ...Option) error {
 	var runtimeOpts runtimeOpts
 	for _, opt := range opts {
 		opt(&runtimeOpts)
@@ -46,7 +44,7 @@ func (rt *runtime) Run(opts ...Option) error {
 
 	klog.Infof("app id: %s", rt.config.AppID)
 
-	return rt.api.Serve()
+	return nil
 }
 
 func (rt *runtime) initComponents() error {
@@ -80,27 +78,25 @@ func (rt *runtime) initComponent(spec components.Spec) error {
 }
 
 func (rt *runtime) initPubSub(spec components.Spec) error {
-	name, ps, err := rt.pubsubFactory.Create(spec)
-	if err != nil {
-		return err
-	}
-	if ps != nil {
-		err = rt.startSubscribing(name, ps)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	_, _, err := rt.pubsubFactory.Create(spec)
+	return err
 }
 
-func (rt *runtime) startSubscribing(name string, pubSub messaging.PubSub) error {
-
-	subscriberService := service.SubscriberService{}
-	if err := subscriberService.StartSubscribing(name, pubSub); err != nil {
-		klog.Errorf("error occurred while subscribing to pubsub %s: %s", name, err)
-		return err
+func (rt *runtime) PublishHandler(request messaging.PublishRequest) error {
+	publisher := rt.pubsubFactory.GetPublisher(request.PubsubName)
+	if publisher == nil {
+		return errors.New(runtime_api.ErrPubsubNotFound)
 	}
-	return nil
+	return publisher.Publish(request.Topic, &messaging.MessageEnvelope{
+		Headers: request.Metadata,
+		Payload: string(request.Data),
+	})
+}
+
+func (rt *runtime) SubscribeHandler(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
+	subs := rt.pubsubFactory.GetSubscriber(request.PubsubName)
+	srv := service.NewtSubscriberService(subs)
+	return srv.StartSubscribing(request.Topic, request.Handler)
 }
 
 func extractComponentCategory(spec components.Spec) components.ComponentCategory {

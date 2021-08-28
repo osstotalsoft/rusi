@@ -164,11 +164,7 @@ type ReceivedMessage struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The data which will be published to topic.
-	Data []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	// The metadata passing to pub components
-	//
-	// metadata property:
-	// - key : the key of the message.
+	Data     []byte            `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	Metadata map[string]string `protobuf:"bytes,2,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 

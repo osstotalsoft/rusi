@@ -14,7 +14,7 @@ service Rusi {
   rpc Publish(PublishRequest) returns (google.protobuf.Empty);
 
   // Subscribe pushes events on the stream
-  rpc Subscribe(SubscribeRequest) returns ( stream ReceivedMessage);
+  rpc Subscribe(SubscribeRequest) returns (stream ReceivedMessage);
 
 }
 
@@ -33,7 +33,7 @@ message PublishRequest {
   //
   // metadata property:
   // - key : the key of the message.
-  map<string,string> metadata = 4;
+  map<string, string> metadata = 4;
 }
 
 message SubscribeRequest {
@@ -47,10 +47,5 @@ message SubscribeRequest {
 message ReceivedMessage {
   // The data which will be published to topic.
   bytes data = 1;
-
-  // The metadata passing to pub components
-  //
-  // metadata property:
-  // - key : the key of the message.
-  map<string,string> metadata = 2;
+  map<string, string> metadata = 2;
 }
