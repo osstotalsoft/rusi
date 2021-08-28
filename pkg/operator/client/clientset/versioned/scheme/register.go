@@ -21,7 +21,6 @@ package scheme
 import (
 	componentsv1alpha1 "rusi/pkg/operator/apis/components/v1alpha1"
 	configurationv1alpha1 "rusi/pkg/operator/apis/configuration/v1alpha1"
-	subscriptionsv1alpha1 "rusi/pkg/operator/apis/subscriptions/v1alpha1"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +35,6 @@ var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	componentsv1alpha1.AddToScheme,
 	configurationv1alpha1.AddToScheme,
-	subscriptionsv1alpha1.AddToScheme,
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition

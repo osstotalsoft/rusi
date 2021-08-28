@@ -8,7 +8,6 @@ import (
 	"rusi/pkg/kube"
 	compv1 "rusi/pkg/operator/apis/components/v1alpha1"
 	configv1 "rusi/pkg/operator/apis/configuration/v1alpha1"
-	subsv1 "rusi/pkg/operator/apis/subscriptions/v1alpha1"
 	"rusi/pkg/operator/client/clientset/versioned"
 	"strings"
 )
@@ -42,14 +41,6 @@ func ListConfigurations(namespace string) (*configv1.ConfigurationList, error) {
 
 	ctx := context.Background()
 	return compClient.ConfigurationV1alpha1().Configurations(namespace).List(ctx, v1.ListOptions{})
-}
-
-func ListSubscriptions(namespace string) (*subsv1.SubscriptionList, error) {
-	cfg := kube.GetConfig()
-	compClient, _ := versioned.NewForConfig(cfg)
-
-	ctx := context.Background()
-	return compClient.SubscriptionsV1alpha1().Subscriptions(namespace).List(ctx, v1.ListOptions{})
 }
 
 func convertMetadataItemsToProperties(items []compv1.MetadataItem) map[string]string {
