@@ -24,7 +24,6 @@ import (
 	components "rusi/pkg/operator/client/informers/externalversions/components"
 	configuration "rusi/pkg/operator/client/informers/externalversions/configuration"
 	internalinterfaces "rusi/pkg/operator/client/informers/externalversions/internalinterfaces"
-	subscriptions "rusi/pkg/operator/client/informers/externalversions/subscriptions"
 	sync "sync"
 	time "time"
 
@@ -176,7 +175,6 @@ type SharedInformerFactory interface {
 
 	Components() components.Interface
 	Configuration() configuration.Interface
-	Subscriptions() subscriptions.Interface
 }
 
 func (f *sharedInformerFactory) Components() components.Interface {
@@ -185,8 +183,4 @@ func (f *sharedInformerFactory) Components() components.Interface {
 
 func (f *sharedInformerFactory) Configuration() configuration.Interface {
 	return configuration.New(f, f.namespace, f.tweakListOptions)
-}
-
-func (f *sharedInformerFactory) Subscriptions() subscriptions.Interface {
-	return subscriptions.New(f, f.namespace, f.tweakListOptions)
 }

@@ -24,8 +24,6 @@ import (
 	fakecomponentsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/components/v1alpha1/fake"
 	configurationv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/configuration/v1alpha1"
 	fakeconfigurationv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/configuration/v1alpha1/fake"
-	subscriptionsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/subscriptions/v1alpha1"
-	fakesubscriptionsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/subscriptions/v1alpha1/fake"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -92,9 +90,4 @@ func (c *Clientset) ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1In
 // ConfigurationV1alpha1 retrieves the ConfigurationV1alpha1Client
 func (c *Clientset) ConfigurationV1alpha1() configurationv1alpha1.ConfigurationV1alpha1Interface {
 	return &fakeconfigurationv1alpha1.FakeConfigurationV1alpha1{Fake: &c.Fake}
-}
-
-// SubscriptionsV1alpha1 retrieves the SubscriptionsV1alpha1Client
-func (c *Clientset) SubscriptionsV1alpha1() subscriptionsv1alpha1.SubscriptionsV1alpha1Interface {
-	return &fakesubscriptionsv1alpha1.FakeSubscriptionsV1alpha1{Fake: &c.Fake}
 }
