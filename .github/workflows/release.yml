@@ -15,8 +15,6 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  # rusi env
-  RUSI_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
 
 jobs:
@@ -52,7 +50,11 @@ jobs:
         run: echo "RUSI_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
         
       - name: Build images
+        env:
+          RUSI_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: make docker-build
         
       - name: Push images
+        env:
+          RUSI_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: make docker-push
