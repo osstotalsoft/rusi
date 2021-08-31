@@ -46,15 +46,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           
-      - name: Set RUSI_TAG env
-        run: echo "RUSI_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Set RELEASE_VERSION env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
         
       - name: Build images
         env:
           RUSI_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          RUSI_TAG: ${{ env.RELEASE_VERSION }}
         run: make docker-build
         
       - name: Push images
         env:
           RUSI_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          RUSI_TAG: ${{ env.RELEASE_VERSION }}
         run: make docker-push
