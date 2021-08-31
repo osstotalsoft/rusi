@@ -16,7 +16,7 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
   # rusi env
-  RUSI_REGISTRY: "$REGISTRY/$IMAGE_NAME"
+  RUSI_REGISTRY: "${{env.REGISTRY}}/${{env.IMAGE_NAME}}"
 
 
 jobs:
