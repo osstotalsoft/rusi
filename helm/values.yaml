@@ -1,6 +1,6 @@
 global:
-  registry: tsacr.azurecr.io/rusiio
-  tag: "0.0.1"
+  registry: ghcr.io/osstotalsoft/rusi
+  tag: "0.0.2"
   dnsSuffix: ".cluster.local"
   imagePullPolicy: IfNotPresent
   imagePullSecrets: "registrykey"
