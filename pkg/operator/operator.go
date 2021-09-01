@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/custom-resource/configuration"
 	"rusi/pkg/kube"
@@ -36,12 +37,14 @@ func ListComponents() ([]components.Spec, error) {
 	return res, nil
 }
 
-func GetConfiguration(namespace string, name string) (configuration.Spec, error) {
+func GetConfiguration(name string) (configuration.Spec, error) {
 	cfg := kube.GetConfig()
 	client, _ := versioned.NewForConfig(cfg)
 	spec := configuration.Spec{}
 
 	ctx := context.Background()
+	namespace := os.Getenv("NAMESPACE")
+
 	conf, err := client.ConfigurationV1alpha1().Configurations(namespace).Get(ctx, name, v1.GetOptions{})
 	if err != nil {
 		return spec, err

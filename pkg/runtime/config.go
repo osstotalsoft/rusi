@@ -3,6 +3,9 @@ package runtime
 import (
 	"errors"
 	"fmt"
+	"os"
+	custom_resource "rusi/pkg/custom-resource"
+	"rusi/pkg/modes"
 )
 
 const (
@@ -12,7 +15,18 @@ const (
 	DefaultMetricsPort = 9090
 )
 
+type ConfigBuilder struct {
+	mode            string
+	rusiGRPCPort    string
+	appPort         string
+	componentsPath  string
+	config          string
+	appID           string
+	enableProfiling bool
+}
+
 type Config struct {
+	Mode            modes.RusiMode
 	RusiGRPCPort    string
 	AppPort         string
 	ComponentsPath  string
@@ -21,30 +35,71 @@ type Config struct {
 	EnableProfiling bool
 }
 
-func NewRuntimeConfig() Config {
-	return Config{}
+func NewRuntimeConfigBuilder() ConfigBuilder {
+	return ConfigBuilder{}
 }
 
-func (c *Config) AttachCmdFlags(
+func (c *ConfigBuilder) AttachCmdFlags(
 	stringVar func(p *string, name string, value string, usage string),
 	boolVar func(p *bool, name string, value bool, usage string)) {
 
-	stringVar(&c.RusiGRPCPort, "rusi-grpc-port", fmt.Sprintf("%v", DefaultGRPCPort), "gRPC port for the Rusi API to listen on")
-	stringVar(&c.AppPort, "app-port", "", "The port the application is listening on")
-	stringVar(&c.ComponentsPath, "components-path", "", "Path for components directory. If empty, components will not be loaded. Self-hosted mode only")
-	stringVar(&c.Config, "config", "", "Path to config file, or name of a configuration object")
-	stringVar(&c.AppID, "app-id", "", "A unique ID for Rusi. Used for Service Discovery and state")
-	boolVar(&c.EnableProfiling, "enable-profiling", false, "Enable profiling")
+	stringVar(&c.mode, "mode", string(modes.StandaloneMode), "Runtime mode for Rusi (kubernetes / standalone - default:standalone )")
+	stringVar(&c.rusiGRPCPort, "rusi-grpc-port", fmt.Sprintf("%v", DefaultGRPCPort), "gRPC port for the Rusi API to listen on")
+	stringVar(&c.appPort, "app-port", "", "The port the application is listening on")
+	stringVar(&c.componentsPath, "components-path", "", "Path for components directory. If empty, components will not be loaded. Self-hosted mode only")
+	stringVar(&c.config, "config", "", "Path to config file, or name of a configuration object")
+	stringVar(&c.appID, "app-id", "", "A unique ID for Rusi. Used for Service Discovery and state")
+	boolVar(&c.enableProfiling, "enable-profiling", false, "Enable profiling")
 }
 
-func (c *Config) Validate() error {
-	if c.AppID == "" {
-		return errors.New("app-id parameter cannot be empty")
+func (c *ConfigBuilder) Build() (Config, error) {
+	err := c.validate()
+	if err != nil {
+		return Config{}, err
 	}
 
-	if c.Config == "" {
+	variables := map[string]string{
+		custom_resource.AppID:   c.appID,
+		custom_resource.AppPort: c.appPort,
+		//custom_resource.HostAddress:     host,
+		custom_resource.RusiGRPCPort: c.rusiGRPCPort,
+		//custom_resource.RusiMetricsPort: metricsExporter.Options().Port,
+		//custom_resource.RusiProfilePort: c.profilePort,
+	}
+
+	if err = setEnvVariables(variables); err != nil {
+		return Config{}, err
+	}
+
+	return Config{
+		Mode:            modes.RusiMode(c.mode),
+		RusiGRPCPort:    c.rusiGRPCPort,
+		AppPort:         c.appPort,
+		ComponentsPath:  c.componentsPath,
+		Config:          c.config,
+		AppID:           c.appID,
+		EnableProfiling: c.enableProfiling,
+	}, nil
+
+}
+
+func (c *ConfigBuilder) validate() error {
+	if c.appID == "" {
+		return errors.New("app-id parameter cannot be empty")
+	}
+	if c.config == "" {
 		return errors.New("config parameter cannot be empty")
 	}
 
+	return nil
+}
+
+func setEnvVariables(variables map[string]string) error {
+	for key, value := range variables {
+		err := os.Setenv(key, value)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

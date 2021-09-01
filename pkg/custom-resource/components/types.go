@@ -25,7 +25,7 @@ var ComponentCategories = []ComponentCategory{
 type Spec struct {
 	Name     string
 	Type     string
-	Version  string
-	Metadata map[string]string
-	Scopes   []string
+	Version  string            `json:"version" yaml:"version"`
+	Metadata map[string]string `json:"metadata" yaml:"metadata"`
+	Scopes   []string          `json:"scopes" yaml:"scopes"`
 }
