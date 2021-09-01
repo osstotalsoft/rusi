@@ -4,7 +4,7 @@ import (
 	"flag"
 	"k8s.io/klog/v2"
 	"rusi/pkg/api/runtime/grpc"
-	"rusi/pkg/components/pubsub"
+	"rusi/pkg/custom-resource/components/pubsub"
 	"rusi/pkg/kube"
 	"rusi/pkg/messaging"
 	natsstreaming "rusi/pkg/messaging/nats"

@@ -2,7 +2,7 @@ package pubsub
 
 import (
 	"k8s.io/klog/v2"
-	"rusi/pkg/components"
+	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/messaging"
 )
 

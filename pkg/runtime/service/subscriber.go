@@ -9,7 +9,7 @@ type subscriberService struct {
 	subscriber messaging.Subscriber
 }
 
-func NewtSubscriberService(subscriber messaging.Subscriber) *subscriberService {
+func NewSubscriberService(subscriber messaging.Subscriber) *subscriberService {
 	return &subscriberService{subscriber}
 }
 

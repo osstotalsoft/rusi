@@ -2,7 +2,7 @@ package pubsub
 
 import (
 	"github.com/pkg/errors"
-	"rusi/pkg/components"
+	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/messaging"
 	"strings"
 )

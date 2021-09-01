@@ -5,8 +5,8 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	runtime_api "rusi/pkg/api/runtime"
-	"rusi/pkg/components"
-	"rusi/pkg/components/pubsub"
+	"rusi/pkg/custom-resource/components"
+	"rusi/pkg/custom-resource/components/pubsub"
 	"rusi/pkg/messaging"
 	"rusi/pkg/runtime/service"
 	"strings"
@@ -95,7 +95,7 @@ func (rt *runtime) PublishHandler(request messaging.PublishRequest) error {
 
 func (rt *runtime) SubscribeHandler(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
 	subs := rt.pubsubFactory.GetSubscriber(request.PubsubName)
-	srv := service.NewtSubscriberService(subs)
+	srv := service.NewSubscriberService(subs)
 	return srv.StartSubscribing(request.Topic, request.Handler)
 }
 

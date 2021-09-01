@@ -2,22 +2,23 @@ package operator
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/google/uuid"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"rusi/pkg/components"
+	"rusi/pkg/custom-resource/components"
+	"rusi/pkg/custom-resource/configuration"
 	"rusi/pkg/kube"
 	compv1 "rusi/pkg/operator/apis/components/v1alpha1"
-	configv1 "rusi/pkg/operator/apis/configuration/v1alpha1"
 	"rusi/pkg/operator/client/clientset/versioned"
 	"strings"
 )
 
 func ListComponents() ([]components.Spec, error) {
 	cfg := kube.GetConfig()
-	compClient, _ := versioned.NewForConfig(cfg)
+	client, _ := versioned.NewForConfig(cfg)
 
 	ctx := context.Background()
-	list, err := compClient.ComponentsV1alpha1().Components("").List(ctx, v1.ListOptions{})
+	list, err := client.ComponentsV1alpha1().Components("").List(ctx, v1.ListOptions{})
 	var res []components.Spec
 	if err != nil {
 		return nil, err
@@ -35,12 +36,21 @@ func ListComponents() ([]components.Spec, error) {
 	return res, nil
 }
 
-func ListConfigurations(namespace string) (*configv1.ConfigurationList, error) {
+func GetConfiguration(namespace string, name string) (configuration.Spec, error) {
 	cfg := kube.GetConfig()
-	compClient, _ := versioned.NewForConfig(cfg)
+	client, _ := versioned.NewForConfig(cfg)
+	spec := configuration.Spec{}
 
 	ctx := context.Background()
-	return compClient.ConfigurationV1alpha1().Configurations(namespace).List(ctx, v1.ListOptions{})
+	conf, err := client.ConfigurationV1alpha1().Configurations(namespace).Get(ctx, name, v1.GetOptions{})
+	if err != nil {
+		return spec, err
+	}
+	//deep copy
+	temporaryVariable, _ := json.Marshal(conf.Spec)
+	err = json.Unmarshal(temporaryVariable, &spec)
+
+	return spec, err
 }
 
 func convertMetadataItemsToProperties(items []compv1.MetadataItem) map[string]string {

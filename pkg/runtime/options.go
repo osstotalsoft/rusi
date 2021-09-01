@@ -1,6 +1,8 @@
 package runtime
 
-import "rusi/pkg/components/pubsub"
+import (
+	"rusi/pkg/custom-resource/components/pubsub"
+)
 
 type (
 	// runtimeOpts encapsulates the components to include in the runtime.
