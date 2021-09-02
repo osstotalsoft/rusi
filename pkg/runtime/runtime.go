@@ -112,28 +112,27 @@ func (rt *runtime) getComponent(componentType string, name string) (components.S
 	return components.Spec{}, false
 }
 
-func (rt *runtime) buildSubscriberPipeline() (middleware_pubsub.Pipeline, error) {
-	var handlers []middleware_pubsub.Middleware
+func (rt *runtime) buildSubscriberPipeline() (pipeline middleware_pubsub.Pipeline, err error) {
 
-	for i := 0; i < len(rt.appConfig.SubscriberPipelineSpec.Handlers); i++ {
-		middlewareSpec := rt.appConfig.SubscriberPipelineSpec.Handlers[i]
+	for _, middlewareSpec := range rt.appConfig.SubscriberPipelineSpec.Handlers {
+
 		component, exists := rt.getComponent(middlewareSpec.Type, middlewareSpec.Name)
 		if !exists {
-			return middleware_pubsub.Pipeline{},
+			return pipeline,
 				errors.Errorf("couldn't find middleware component with name %s and type %s/%s",
 					middlewareSpec.Name,
 					middlewareSpec.Type,
 					middlewareSpec.Version)
 		}
-		handler, err := rt.subscriptionMiddlewareRegistry.Create(middlewareSpec.Type, middlewareSpec.Version,
+		midlw, err := rt.subscriptionMiddlewareRegistry.Create(middlewareSpec.Type, middlewareSpec.Version,
 			component.Metadata)
 		if err != nil {
-			return middleware_pubsub.Pipeline{}, err
+			return pipeline, err
 		}
 		klog.Infof("enabled %s/%s middleware", middlewareSpec.Type, middlewareSpec.Version)
-		handlers = append(handlers, handler)
+		pipeline.UseMiddleware(midlw)
 	}
-	return middleware_pubsub.Pipeline{Middlewares: handlers}, nil
+	return pipeline, nil
 }
 
 func (rt *runtime) PublishHandler(request messaging.PublishRequest) error {
