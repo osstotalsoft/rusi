@@ -19,7 +19,6 @@ func TestLoadComponentsFromFile(t *testing.T) {
 	t.Run("valid yaml content", func(t *testing.T) {
 		filename := "test-component-valid.yaml"
 		yaml := `
-apiVersion: rusi.io/v1alpha1
 kind: Component
 metadata:
   name: statestore
@@ -43,7 +42,6 @@ spec:
 		filename := "test-component-invalid.yaml"
 		yaml := `
 INVALID_YAML_HERE
-apiVersion: rusi.io/v1alpha1
 kind: Component
 metadata:
 name: statestore`
@@ -77,7 +75,6 @@ func TestIsYaml(t *testing.T) {
 
 func TestStandaloneDecodeValidYaml(t *testing.T) {
 	yaml := `
-apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
    name: statestore
@@ -100,7 +97,6 @@ spec:
 
 func TestStandaloneDecodeInvalidComponent(t *testing.T) {
 	yaml := `
-apiVersion: dapr.io/v1alpha1
 kind: Subscription
 metadata:
    name: testsub
@@ -126,7 +122,6 @@ func TestStandaloneDecodeInvalidYaml(t *testing.T) {
 
 	yaml := `
 INVALID_YAML_HERE
-apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
 name: statestore`
@@ -137,7 +132,6 @@ name: statestore`
 
 func TestStandaloneDecodeValidMultiYaml(t *testing.T) {
 	yaml := `
-apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
     name: statestore1
@@ -149,7 +143,6 @@ spec:
     - name: prop2
       value: value2
 ---
-apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
     name: statestore2
@@ -177,7 +170,6 @@ spec:
 func TestStandaloneDecodeInValidDocInMultiYaml(t *testing.T) {
 
 	yaml := `
-apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
     name: statestore1
@@ -190,12 +182,10 @@ spec:
       value: value2
 ---
 INVALID_YAML_HERE
-apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
 name: invalidyaml
 ---
-apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
     name: statestore2

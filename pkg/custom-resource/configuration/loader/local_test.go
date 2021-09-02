@@ -84,6 +84,55 @@ spec:
 	})
 }
 
+func TestFeatureSpecForStandAlone(t *testing.T) {
+
+	writeFile("feature_config.yaml", `
+kind: Configuration
+metadata:
+  name: configName
+spec:
+  features:
+  - name: Actor.Reentrancy
+    enabled: true
+  - name: Test.Feature
+    enabled: false`)
+	defer os.Remove("feature_config.yaml")
+
+	testCases := []struct {
+		name           string
+		confFile       string
+		featureName    configuration.Feature
+		featureEnabled bool
+	}{
+		{
+			name:           "Feature is enabled",
+			confFile:       "feature_config.yaml",
+			featureName:    configuration.Feature("Actor.Reentrancy"),
+			featureEnabled: true,
+		},
+		{
+			name:           "Feature is disabled",
+			confFile:       "feature_config.yaml",
+			featureName:    configuration.Feature("Test.Feature"),
+			featureEnabled: false,
+		},
+		{
+			name:           "Feature is disabled if missing",
+			confFile:       "feature_config.yaml",
+			featureName:    configuration.Feature("Test.Missing"),
+			featureEnabled: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			config, err := LoadStandaloneConfiguration(tc.confFile)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.featureEnabled, configuration.IsFeatureEnabled(config.Features, tc.featureName))
+		})
+	}
+}
+
 func writeFile(path, content string) {
 	_ = os.WriteFile(path, []byte(content), fs.FileMode(0644))
 }
