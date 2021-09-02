@@ -171,7 +171,7 @@ spec:
 	assert.Equal(t, "statestore2", components[1].Name)
 	assert.Equal(t, "state.redis", components[1].Type)
 	assert.Len(t, components[1].Metadata, 1)
-	assert.Equal(t, "value3", components[0].Metadata["prop3"])
+	assert.Equal(t, "value3", components[1].Metadata["prop3"])
 }
 
 func TestStandaloneDecodeInValidDocInMultiYaml(t *testing.T) {
