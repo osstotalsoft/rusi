@@ -33,10 +33,10 @@ spec:
 `
 		err := writeTempConfig(filename, yaml)
 		defer os.Remove(filename)
-		assert.Nil(t, err)
+		assert.NoError(t, err, "Unexpected error")
 		components, err := loadComponentsFromFile(filename)
 		assert.Len(t, components, 1)
-		assert.Nil(t, err)
+		assert.NoError(t, err, "Unexpected error")
 	})
 
 	t.Run("invalid yaml head", func(t *testing.T) {
@@ -49,10 +49,10 @@ metadata:
 name: statestore`
 		err := writeTempConfig(filename, yaml)
 		defer os.Remove(filename)
-		assert.Nil(t, err)
+		assert.NoError(t, err, "Unexpected error")
 		components, err := loadComponentsFromFile(filename)
 		assert.Len(t, components, 0)
-		assert.Nil(t, err)
+		assert.NoError(t, err, "Unexpected error")
 	})
 
 	t.Run("load components file not exist", func(t *testing.T) {
@@ -60,7 +60,7 @@ name: statestore`
 
 		components, err := loadComponentsFromFile(filename)
 		assert.Len(t, components, 0)
-		assert.NotNil(t, err)
+		assert.Error(t, err, "Expected an error")
 	})
 }
 

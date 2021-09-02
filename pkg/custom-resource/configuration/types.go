@@ -6,6 +6,8 @@ const (
 	DefaultTrustDomain = "public"
 )
 
+type Feature string
+
 type Configuration struct {
 	Spec Spec `json:"spec" yaml:"spec"`
 }
@@ -93,6 +95,6 @@ type AccessControlSpec struct {
 
 // FeatureSpec defines the features that are enabled/disabled.
 type FeatureSpec struct {
-	Name    string `json:"name" yaml:"name"`
-	Enabled bool   `json:"enabled" yaml:"enabled"`
+	Name    Feature `json:"name" yaml:"name"`
+	Enabled bool    `json:"enabled" yaml:"enabled"`
 }
