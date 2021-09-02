@@ -3,7 +3,9 @@ package loader
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
@@ -53,7 +55,7 @@ func LoadLocalComponents(componentsPath string) ComponentsLoader {
 		for _, file := range files {
 			if !file.IsDir() && isYaml(file.Name()) {
 				path := filepath.Join(componentsPath, file.Name())
-				comps := loadComponentsFromFile(path)
+				comps, _ := loadComponentsFromFile(path)
 				if len(comps) > 0 {
 					list = append(list, comps...)
 				}
@@ -64,19 +66,21 @@ func LoadLocalComponents(componentsPath string) ComponentsLoader {
 	}
 }
 
-func loadComponentsFromFile(path string) []components.Spec {
-	var errors []error
+func loadComponentsFromFile(path string) ([]components.Spec, error) {
+	var errs []error
 	var comps []components.Spec
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		klog.Errorf("load components error when reading file %s : %s", path, err)
-		return comps
+		return comps, err
 	}
-	comps, errors = decodeYaml(b)
-	for _, err := range errors {
-		klog.Errorf("load components error when parsing components yaml resource in %s : %s", path, err)
+	comps, errs = decodeYaml(b)
+	for _, err := range errs {
+		errStr := fmt.Sprintf("load components error when parsing components yaml resource in %s : %s", path, err)
+		klog.Error(errStr)
+		err = errors.Wrap(err, errStr)
 	}
-	return comps
+	return comps, err
 }
 
 // isYaml checks whether the file is yaml or not.
@@ -89,7 +93,7 @@ func isYaml(fileName string) bool {
 }
 
 // decodeYaml decodes the yaml document.
-func decodeYaml(b []byte) (list []components.Spec, errors []error) {
+func decodeYaml(b []byte) (list []components.Spec, errs []error) {
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	scanner.Split(splitYamlDoc)
 
@@ -101,7 +105,7 @@ func decodeYaml(b []byte) (list []components.Spec, errors []error) {
 		}
 
 		if err != nil {
-			errors = append(errors, err)
+			errs = append(errs, err)
 			continue
 		}
 
@@ -118,7 +122,7 @@ func decodeYaml(b []byte) (list []components.Spec, errors []error) {
 		})
 	}
 
-	return list, errors
+	return
 }
 
 // decode reads the YAML resource in document.
