@@ -1,5 +1,8 @@
-# rusi
-Rusi is a Runtime Sidecar and a [Dapr](https://github.com/dapr/dapr) inspired story
+rusi
+===============
+>Runtime Sidecar - a [Dapr](https://github.com/dapr/dapr) inspired story
+
+![rusi](assets/logo.png)
 
 ## Contributing on windows
 
