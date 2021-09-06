@@ -70,7 +70,9 @@ In Kubernetes mode Rusi will query the kubernetes api in order to find and regis
       version: v1
     ```
 3. Configure middleware pipeline (optional)
-    ```yaml
+
+    configuration is not mandatory, unless you want to specify a specific pipeline for pubsub
+   ```yaml
     apiVersion: rusi.io/v1alpha1
     kind: Configuration
     metadata:
@@ -87,7 +89,7 @@ In Kubernetes mode Rusi will query the kubernetes api in order to find and regis
             type: middleware.pubsub.uppercase
           # add other middlewares
     ```
-### run rusi 
+### run rusid 
  - kubernetes 
 ```shell
 go run cmd/rusid/sidecar.go --mode kubernetes --app-id your-app-id --config "kube-config-resource-name"
