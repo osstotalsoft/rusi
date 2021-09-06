@@ -1,22 +1,16 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"k8s.io/klog/v2"
+	"rusi/internal/tracing"
 	"rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
-	"rusi/pkg/custom-resource/components/middleware"
-	"rusi/pkg/custom-resource/components/pubsub"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"rusi/pkg/kube"
-	"rusi/pkg/messaging"
-	natsstreaming "rusi/pkg/messaging/nats"
-	middleware_pubsub "rusi/pkg/middleware/pubsub"
 	"rusi/pkg/modes"
 	"rusi/pkg/operator"
 	"rusi/pkg/runtime"
-	"strings"
 )
 
 func main() {
@@ -24,6 +18,11 @@ func main() {
 	klog.InitFlags(nil)
 	kube.InitFlags(nil)
 	defer klog.Flush()
+
+	err := tracing.SetDefaultTracerProvider("http://localhost:14268/api/traces")
+	if err != nil {
+		klog.Fatal(err)
+	}
 
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
 	cfgBuilder.AttachCmdFlags(flag.StringVar, flag.BoolVar)
@@ -46,22 +45,7 @@ func main() {
 	}
 	rusiGrpcServer := grpc.NewRusiServer(rt.PublishHandler, rt.SubscribeHandler)
 	api := grpc.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort)
-	err = rt.Load(
-		runtime.WithPubSubs(
-			pubsub.New("natsstreaming", func() messaging.PubSub {
-				return natsstreaming.NewNATSStreamingPubSub()
-			})),
-		runtime.WithPubsubMiddleware(
-			middleware.New("uppercase", func(properties map[string]string) middleware_pubsub.Middleware {
-				return func(next middleware_pubsub.RequestHandler) middleware_pubsub.RequestHandler {
-					return func(ctx context.Context, msg *messaging.MessageEnvelope) {
-						body := msg.Payload.(string)
-						msg.Payload = strings.ToUpper(body)
-						next(ctx, msg)
-					}
-				}
-			}),
-		))
+	err = rt.Load(RegisterComponentFactories()...)
 	if err != nil {
 		klog.Error(err)
 		return
