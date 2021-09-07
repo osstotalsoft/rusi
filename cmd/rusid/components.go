@@ -6,7 +6,6 @@ import (
 	"rusi/pkg/custom-resource/components/pubsub"
 	"rusi/pkg/messaging"
 	natsstreaming "rusi/pkg/messaging/nats"
-	middleware_pubsub "rusi/pkg/middleware/pubsub"
 	"rusi/pkg/runtime"
 	"strings"
 )
@@ -20,8 +19,8 @@ func RegisterComponentFactories() (result []runtime.Option) {
 			}),
 		),
 		runtime.WithPubsubMiddleware(
-			middleware.New("uppercase", func(properties map[string]string) middleware_pubsub.Middleware {
-				return func(next middleware_pubsub.RequestHandler) middleware_pubsub.RequestHandler {
+			middleware.New("uppercase", func(properties map[string]string) messaging.Middleware {
+				return func(next messaging.RequestHandler) messaging.RequestHandler {
 					return func(ctx context.Context, msg *messaging.MessageEnvelope) {
 						body := msg.Payload.(string)
 						msg.Payload = strings.ToUpper(body)

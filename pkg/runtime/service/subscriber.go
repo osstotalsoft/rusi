@@ -4,21 +4,25 @@ import (
 	"context"
 	"k8s.io/klog/v2"
 	"rusi/pkg/messaging"
-	"rusi/pkg/middleware/pubsub"
+	"rusi/pkg/middleware"
 )
 
 type subscriberService struct {
 	subscriber messaging.Subscriber
-	pipeline   pubsub.Pipeline
+	pipeline   messaging.Pipeline
 }
 
-func NewSubscriberService(subscriber messaging.Subscriber, pipeline pubsub.Pipeline) *subscriberService {
+func NewSubscriberService(subscriber messaging.Subscriber, pipeline messaging.Pipeline) *subscriberService {
 	return &subscriberService{subscriber, pipeline}
 }
 
 func (srv *subscriberService) StartSubscribing(topic string, handler messaging.Handler) (messaging.UnsubscribeFunc, error) {
 
 	ctx := context.Background()
+
+	//insert tracing by default
+	srv.pipeline.UseMiddleware(middleware.TracingMiddleware())
+
 	pipe := srv.pipeline.Build(func(ctx context.Context, env *messaging.MessageEnvelope) {
 		err := handler(env)
 		if err != nil {

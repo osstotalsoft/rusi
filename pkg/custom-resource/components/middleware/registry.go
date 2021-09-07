@@ -3,7 +3,7 @@ package middleware
 import (
 	"github.com/pkg/errors"
 	"rusi/pkg/custom-resource/components"
-	"rusi/pkg/middleware/pubsub"
+	"rusi/pkg/messaging"
 	"strings"
 )
 
@@ -11,22 +11,22 @@ type (
 	// Middleware is a Pubsub middleware component definition.
 	Middleware struct {
 		Name          string
-		FactoryMethod func(properties map[string]string) pubsub.Middleware
+		FactoryMethod func(properties map[string]string) messaging.Middleware
 	}
 
 	// Registry is the interface for callers to get registered Pubsub middleware.
 	Registry interface {
 		Register(components ...Middleware)
-		Create(name, version string, properties map[string]string) (pubsub.Middleware, error)
+		Create(name, version string, properties map[string]string) (messaging.Middleware, error)
 	}
 
 	pubsubMiddlewareRegistry struct {
-		middleware map[string]func(properties map[string]string) pubsub.Middleware
+		middleware map[string]func(properties map[string]string) messaging.Middleware
 	}
 )
 
 // New creates a Middleware.
-func New(name string, factoryMethod func(properties map[string]string) pubsub.Middleware) Middleware {
+func New(name string, factoryMethod func(properties map[string]string) messaging.Middleware) Middleware {
 	return Middleware{
 		Name:          name,
 		FactoryMethod: factoryMethod,
@@ -36,7 +36,7 @@ func New(name string, factoryMethod func(properties map[string]string) pubsub.Mi
 // NewRegistry returns a new Pubsub middleware registry.
 func NewRegistry() Registry {
 	return &pubsubMiddlewareRegistry{
-		middleware: map[string]func(properties map[string]string) pubsub.Middleware{},
+		middleware: map[string]func(properties map[string]string) messaging.Middleware{},
 	}
 }
 
@@ -48,14 +48,14 @@ func (p *pubsubMiddlewareRegistry) Register(components ...Middleware) {
 }
 
 // Create instantiates a Pubsub middleware based on `name`.
-func (p *pubsubMiddlewareRegistry) Create(name, version string, properties map[string]string) (pubsub.Middleware, error) {
+func (p *pubsubMiddlewareRegistry) Create(name, version string, properties map[string]string) (messaging.Middleware, error) {
 	if method, ok := p.getMiddleware(name, version); ok {
 		return method(properties), nil
 	}
 	return nil, errors.Errorf("Pubsub middleware %s/%s has not been registered", name, version)
 }
 
-func (p *pubsubMiddlewareRegistry) getMiddleware(name, version string) (func(properties map[string]string) pubsub.Middleware, bool) {
+func (p *pubsubMiddlewareRegistry) getMiddleware(name, version string) (func(properties map[string]string) messaging.Middleware, bool) {
 	nameLower := strings.ToLower(name)
 	versionLower := strings.ToLower(version)
 	middlewareFn, ok := p.middleware[nameLower+"/"+versionLower]

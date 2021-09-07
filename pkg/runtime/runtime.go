@@ -12,7 +12,6 @@ import (
 	"rusi/pkg/custom-resource/configuration"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"rusi/pkg/messaging"
-	middleware_pubsub "rusi/pkg/middleware/pubsub"
 	"rusi/pkg/runtime/service"
 	"strings"
 )
@@ -112,10 +111,9 @@ func (rt *runtime) getComponent(componentType string, name string) (components.S
 	return components.Spec{}, false
 }
 
-func (rt *runtime) buildSubscriberPipeline() (pipeline middleware_pubsub.Pipeline, err error) {
+func (rt *runtime) buildSubscriberPipeline() (pipeline messaging.Pipeline, err error) {
 
 	for _, middlewareSpec := range rt.appConfig.SubscriberPipelineSpec.Handlers {
-
 		component, exists := rt.getComponent(middlewareSpec.Type, middlewareSpec.Name)
 		if !exists {
 			return pipeline,

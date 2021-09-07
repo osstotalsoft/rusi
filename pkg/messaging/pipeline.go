@@ -1,11 +1,10 @@
-package pubsub
+package messaging
 
 import (
 	"context"
-	"rusi/pkg/messaging"
 )
 
-type RequestHandler func(ctx context.Context, msg *messaging.MessageEnvelope)
+type RequestHandler func(ctx context.Context, msg *MessageEnvelope)
 type Middleware func(next RequestHandler) RequestHandler
 
 type Pipeline struct {

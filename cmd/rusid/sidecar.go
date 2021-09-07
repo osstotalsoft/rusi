@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"k8s.io/klog/v2"
 	"rusi/internal/tracing"
@@ -19,10 +20,12 @@ func main() {
 	kube.InitFlags(nil)
 	defer klog.Flush()
 
-	err := tracing.SetDefaultTracerProvider("http://localhost:14268/api/traces")
+	tp, err := tracing.JaegerTracerProvider("http://kube-worker1.totalsoft.local:31034/api/traces")
 	if err != nil {
 		klog.Fatal(err)
 	}
+	tracing.SetDefaultTracerProvider(tp)
+	defer tracing.FlushTracer(tp)(context.Background())
 
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
 	cfgBuilder.AttachCmdFlags(flag.StringVar, flag.BoolVar)
