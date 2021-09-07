@@ -20,11 +20,11 @@ func RegisterComponentFactories() (result []runtime.Option) {
 		),
 		runtime.WithPubsubMiddleware(
 			middleware.New("uppercase", func(properties map[string]string) messaging.Middleware {
-				return func(next messaging.RequestHandler) messaging.RequestHandler {
-					return func(ctx context.Context, msg *messaging.MessageEnvelope) {
+				return func(next messaging.Handler) messaging.Handler {
+					return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 						body := msg.Payload.(string)
 						msg.Payload = strings.ToUpper(body)
-						next(ctx, msg)
+						return next(ctx, msg)
 					}
 				}
 			}),

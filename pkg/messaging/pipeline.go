@@ -1,17 +1,12 @@
 package messaging
 
-import (
-	"context"
-)
-
-type RequestHandler func(ctx context.Context, msg *MessageEnvelope)
-type Middleware func(next RequestHandler) RequestHandler
+type Middleware func(next Handler) Handler
 
 type Pipeline struct {
 	Middlewares []Middleware
 }
 
-func (p Pipeline) Build(handler RequestHandler) RequestHandler {
+func (p Pipeline) Build(handler Handler) Handler {
 	for i := len(p.Middlewares) - 1; i >= 0; i-- {
 		handler = p.Middlewares[i](handler)
 	}

@@ -23,7 +23,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 	}
 	subscribeHandler := func(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
 		if msg, ok := store[request.Topic]; ok {
-			request.Handler(&msg)
+			request.Handler(context.Background(), &msg)
 		} else {
 			return nil, errors.New("invalid topic")
 		}

@@ -55,7 +55,7 @@ func (srv *server) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Ru
 	unsub, err := srv.subscribeHandler(messaging.SubscribeRequest{
 		PubsubName: request.GetPubsubName(),
 		Topic:      request.GetTopic(),
-		Handler: func(env *messaging.MessageEnvelope) error {
+		Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
 			data, err := serdes.Marshal(env)
 			if err != nil {
 				return err

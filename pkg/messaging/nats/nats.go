@@ -220,7 +220,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler)
 			klog.ErrorS(err, "Error unmarshaling message")
 		}
 
-		err = handler(&msg)
+		err = handler(n.ctx, &msg)
 		if err == nil {
 			// we only send a successful ACK if there is no error from Dapr runtime
 			natsMsg.Ack()
