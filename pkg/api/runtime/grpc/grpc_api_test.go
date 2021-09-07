@@ -14,14 +14,14 @@ import (
 func Test_RusiServer_Pubsub(t *testing.T) {
 
 	store := make(map[string]messaging.MessageEnvelope)
-	publishHandler := func(request messaging.PublishRequest) error {
+	publishHandler := func(ctx context.Context, request messaging.PublishRequest) error {
 		store[request.Topic] = messaging.MessageEnvelope{
 			Headers: request.Metadata,
 			Payload: string(request.Data),
 		}
 		return nil
 	}
-	subscribeHandler := func(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
+	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
 		if msg, ok := store[request.Topic]; ok {
 			request.Handler(context.Background(), &msg)
 		} else {
