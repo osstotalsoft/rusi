@@ -1,17 +1,19 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/custom-resource/components"
 	components_loader "rusi/pkg/custom-resource/components/loader"
-	"rusi/pkg/custom-resource/components/middleware"
+	components_middleware "rusi/pkg/custom-resource/components/middleware"
 	"rusi/pkg/custom-resource/components/pubsub"
 	"rusi/pkg/custom-resource/configuration"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"rusi/pkg/messaging"
+	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
 	"strings"
 )
@@ -23,7 +25,7 @@ type runtime struct {
 	appConfig        configuration.Spec
 	components       []components.Spec
 
-	subscriptionMiddlewareRegistry middleware.Registry
+	subscriptionMiddlewareRegistry components_middleware.Registry
 }
 
 func NewRuntime(config Config,
@@ -42,7 +44,7 @@ func NewRuntime(config Config,
 		componentsLoader: componentsLoader,
 		appConfig:        appConfig,
 
-		subscriptionMiddlewareRegistry: middleware.NewRegistry(),
+		subscriptionMiddlewareRegistry: components_middleware.NewRegistry(),
 	}
 }
 
@@ -133,18 +135,24 @@ func (rt *runtime) buildSubscriberPipeline() (pipeline messaging.Pipeline, err e
 	return pipeline, nil
 }
 
-func (rt *runtime) PublishHandler(request messaging.PublishRequest) error {
+func (rt *runtime) PublishHandler(ctx context.Context, request messaging.PublishRequest) error {
 	publisher := rt.pubsubFactory.GetPublisher(request.PubsubName)
 	if publisher == nil {
 		return errors.New(runtime_api.ErrPubsubNotFound)
 	}
-	return publisher.Publish(request.Topic, &messaging.MessageEnvelope{
+
+	midl := middleware.PublisherTracingMiddleware()
+	env := &messaging.MessageEnvelope{
 		Headers: request.Metadata,
 		Payload: string(request.Data),
-	})
+	}
+
+	return midl(func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+		return publisher.Publish(request.Topic, msg)
+	})(ctx, env)
 }
 
-func (rt *runtime) SubscribeHandler(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
+func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
 	subs := rt.pubsubFactory.GetSubscriber(request.PubsubName)
 	pipeline, err := rt.buildSubscriberPipeline()
 	if err != nil {

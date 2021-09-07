@@ -37,14 +37,14 @@ func (srv *grpcApi) Serve() error {
 	return grpcServer.Serve(lis)
 }
 
-func NewRusiServer(publishHandler func(request messaging.PublishRequest) error,
-	subscribeHandler func(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)) v1.RusiServer {
+func NewRusiServer(publishHandler func(ctx context.Context, request messaging.PublishRequest) error,
+	subscribeHandler func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)) v1.RusiServer {
 	return &server{publishHandler, subscribeHandler}
 }
 
 type server struct {
-	publishHandler   func(request messaging.PublishRequest) error
-	subscribeHandler func(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)
+	publishHandler   func(ctx context.Context, request messaging.PublishRequest) error
+	subscribeHandler func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)
 }
 
 // Subscribe creates a subscription
@@ -52,7 +52,7 @@ func (srv *server) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Ru
 	ctx, cancel := context.WithCancel(subscribeServer.Context())
 	defer cancel()
 
-	unsub, err := srv.subscribeHandler(messaging.SubscribeRequest{
+	unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
 		PubsubName: request.GetPubsubName(),
 		Topic:      request.GetTopic(),
 		Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
@@ -90,7 +90,7 @@ func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*em
 		return &emptypb.Empty{}, err
 	}
 
-	err := srv.publishHandler(messaging.PublishRequest{
+	err := srv.publishHandler(ctx, messaging.PublishRequest{
 		PubsubName: request.GetPubsubName(),
 		Topic:      request.GetTopic(),
 		Data:       request.GetData(),

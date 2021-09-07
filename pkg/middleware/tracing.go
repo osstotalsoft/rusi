@@ -59,13 +59,13 @@ type mapHeaderCarrier struct {
 	innerMap map[string]string
 }
 
-func (i mapHeaderCarrier) Get(key string) string {
+func (i *mapHeaderCarrier) Get(key string) string {
 	return i.innerMap[key]
 }
-func (i mapHeaderCarrier) Set(key string, value string) {
+func (i *mapHeaderCarrier) Set(key string, value string) {
 	i.innerMap[key] = value
 }
-func (i mapHeaderCarrier) Keys() []string {
+func (i *mapHeaderCarrier) Keys() []string {
 	keys := make([]string, 0, len(i.innerMap))
 	for k := range i.innerMap {
 		keys = append(keys, k)
@@ -77,13 +77,13 @@ func (i mapHeaderCarrier) Keys() []string {
 // metadata object. This function is meant to be used on outgoing
 // requests.
 func Inject(ctx context.Context, headers map[string]string) {
-	otel.GetTextMapPropagator().Inject(ctx, mapHeaderCarrier{headers})
+	otel.GetTextMapPropagator().Inject(ctx, &mapHeaderCarrier{headers})
 }
 
 // Extract returns the correlation context and span context that
 // another service encoded in the gRPC metadata object with Inject.
 // This function is meant to be used on incoming requests.
 func Extract(ctx context.Context, headers map[string]string) (baggage.Baggage, trace.SpanContext) {
-	ctx = otel.GetTextMapPropagator().Extract(ctx, mapHeaderCarrier{headers})
+	ctx = otel.GetTextMapPropagator().Extract(ctx, &mapHeaderCarrier{headers})
 	return baggage.FromContext(ctx), trace.SpanContextFromContext(ctx)
 }
