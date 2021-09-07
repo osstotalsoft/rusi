@@ -10,11 +10,12 @@ import (
 	"time"
 )
 
-func SetDefaultTracerProvider(tp trace.TracerProvider) {
+func SetTracing(tp trace.TracerProvider, propagator propagation.TextMapPropagator) {
 	// Register our TracerProvider as the global so any imported
 	// instrumentation in the future will default to using it.
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	//otel.SetTextMapPropagator(propagation.TraceContext{})
+	otel.SetTextMapPropagator(propagator)
 }
 
 // FlushTracer cleanly shutdown and flush telemetry when the application exits.

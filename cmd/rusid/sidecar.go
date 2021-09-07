@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
 	"rusi/internal/tracing"
@@ -26,7 +27,7 @@ func main() {
 	if err != nil {
 		klog.Fatal(err)
 	}
-	tracing.SetDefaultTracerProvider(tp)
+	tracing.SetTracing(tp, jaeger.Jaeger{})
 	defer tracing.FlushTracer(tp)(context.Background())
 
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
