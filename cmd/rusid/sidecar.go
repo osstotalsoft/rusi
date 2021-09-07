@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
 	"rusi/internal/tracing"
-	"rusi/pkg/api/runtime/grpc"
+	grpc_api "rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"rusi/pkg/kube"
@@ -46,8 +48,11 @@ func main() {
 	if rt == nil {
 		return
 	}
-	rusiGrpcServer := grpc.NewRusiServer(rt.PublishHandler, rt.SubscribeHandler)
-	api := grpc.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort)
+	rusiGrpcServer := grpc_api.NewRusiServer(rt.PublishHandler, rt.SubscribeHandler)
+	api := grpc_api.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort,
+		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+	)
 	err = rt.Load(RegisterComponentFactories()...)
 	if err != nil {
 		klog.Error(err)

@@ -15,17 +15,18 @@ import (
 	v1 "rusi/pkg/proto/runtime/v1"
 )
 
-func NewGrpcAPI(server v1.RusiServer, port string) runtime.Api {
-	return &grpcApi{port, server}
+func NewGrpcAPI(server v1.RusiServer, port string, serverOptions ...grpc.ServerOption) runtime.Api {
+	return &grpcApi{port, server, serverOptions}
 }
 
 type grpcApi struct {
-	port   string
-	server v1.RusiServer
+	port          string
+	server        v1.RusiServer
+	serverOptions []grpc.ServerOption
 }
 
 func (srv *grpcApi) Serve() error {
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(srv.serverOptions...)
 	v1.RegisterRusiServer(grpcServer, srv.server)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%s", srv.port))

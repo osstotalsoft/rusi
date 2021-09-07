@@ -3,6 +3,7 @@ package tracing
 import (
 	"context"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/klog/v2"
@@ -13,6 +14,7 @@ func SetDefaultTracerProvider(tp trace.TracerProvider) {
 	// Register our TracerProvider as the global so any imported
 	// instrumentation in the future will default to using it.
 	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 }
 
 // FlushTracer cleanly shutdown and flush telemetry when the application exits.
