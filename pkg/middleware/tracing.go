@@ -7,17 +7,44 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc/metadata"
 	"k8s.io/klog/v2"
 	"rusi/pkg/messaging"
 )
 
-func TracingMiddleware() messaging.Middleware {
+func PublisherTracingMiddleware() messaging.Middleware {
 	tr := otel.Tracer("tracing-middleware")
 
 	return func(next messaging.Handler) messaging.Handler {
 		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
-			_, span := tr.Start(ctx, "Publisher new incoming message")
+
+			ctx, span := tr.Start(ctx,
+				"Publish.Message",
+				trace.WithSpanKind(trace.SpanKindProducer))
+			defer span.End()
+
+			carrier := mapHeaderCarrier{msg.Headers}
+			Inject(ctx, msg.Headers)
+			msg.Headers = carrier.innerMap
+			klog.V(4).InfoS("tracing middleware hit")
+			return next(ctx, msg)
+		}
+	}
+}
+
+func SubscriberTracingMiddleware() messaging.Middleware {
+	tr := otel.Tracer("tracing-middleware")
+
+	return func(next messaging.Handler) messaging.Handler {
+		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+
+			bags, spanCtx := Extract(ctx, msg.Headers)
+			ctx = baggage.ContextWithBaggage(ctx, bags)
+
+			ctx, span := tr.Start(
+				trace.ContextWithRemoteSpanContext(ctx, spanCtx),
+				"Subscriber.Message",
+				trace.WithSpanKind(trace.SpanKindConsumer))
+
 			span.AddEvent("new message received",
 				trace.WithAttributes(attribute.String("headers", fmt.Sprintf("%v", msg.Headers))))
 			span.SetAttributes(attribute.Key("message").String(fmt.Sprintf("%v", *msg)))
@@ -28,23 +55,35 @@ func TracingMiddleware() messaging.Middleware {
 	}
 }
 
+type mapHeaderCarrier struct {
+	innerMap map[string]string
+}
+
+func (i mapHeaderCarrier) Get(key string) string {
+	return i.innerMap[key]
+}
+func (i mapHeaderCarrier) Set(key string, value string) {
+	i.innerMap[key] = value
+}
+func (i mapHeaderCarrier) Keys() []string {
+	keys := make([]string, 0, len(i.innerMap))
+	for k := range i.innerMap {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // Inject injects correlation context and span context into the gRPC
 // metadata object. This function is meant to be used on outgoing
 // requests.
-func Inject(ctx context.Context, metadata *metadata.MD, opts ...Option) {
-	c := newConfig(opts)
-	c.Propagators.Inject(ctx, &metadataSupplier{
-		metadata: metadata,
-	})
+func Inject(ctx context.Context, headers map[string]string) {
+	otel.GetTextMapPropagator().Inject(ctx, mapHeaderCarrier{headers})
 }
 
 // Extract returns the correlation context and span context that
 // another service encoded in the gRPC metadata object with Inject.
 // This function is meant to be used on incoming requests.
-func Extract(ctx context.Context, metadata *metadata.MD, opts ...Option) (baggage.Baggage, trace.SpanContext) {
-	c := newConfig(opts)
-	ctx = c.Propagators.Extract(ctx, &metadataSupplier{
-		metadata: metadata,
-	})
+func Extract(ctx context.Context, headers map[string]string) (baggage.Baggage, trace.SpanContext) {
+	ctx = otel.GetTextMapPropagator().Extract(ctx, mapHeaderCarrier{headers})
 	return baggage.FromContext(ctx), trace.SpanContextFromContext(ctx)
 }
