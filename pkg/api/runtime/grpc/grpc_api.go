@@ -90,11 +90,16 @@ func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*em
 		return &emptypb.Empty{}, err
 	}
 
+	metadata := request.GetMetadata()
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+
 	err := srv.publishHandler(ctx, messaging.PublishRequest{
 		PubsubName: request.GetPubsubName(),
 		Topic:      request.GetTopic(),
 		Data:       request.GetData(),
-		Metadata:   request.GetMetadata(),
+		Metadata:   metadata,
 	})
 
 	if err != nil {
