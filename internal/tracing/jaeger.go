@@ -8,17 +8,11 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-const (
-	service     = "rusi-sidecar"
-	environment = "production"
-	id          = 1
-)
-
 // JaegerTracerProvider returns an OpenTelemetry TracerProvider configured to use
 // the Jaeger exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
-func JaegerTracerProvider(url string) (*tracesdk.TracerProvider, error) {
+func JaegerTracerProvider(url, environment, serviceName string) (*tracesdk.TracerProvider, error) {
 	// Create the Jaeger exporter
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
 	if err != nil {
@@ -30,9 +24,9 @@ func JaegerTracerProvider(url string) (*tracesdk.TracerProvider, error) {
 		// Record information about this application in an Resource.
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(service),
+			semconv.ServiceNameKey.String(serviceName),
 			attribute.String("environment", environment),
-			attribute.Int64("ID", id),
+			//attribute.Int64("ID", id),
 		)),
 	)
 	return tp, nil

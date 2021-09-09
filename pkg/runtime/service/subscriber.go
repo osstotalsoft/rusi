@@ -26,6 +26,7 @@ func (srv *subscriberService) StartSubscribing(topic string, handler messaging.H
 		klog.InfoS("message received on", "topic", topic,
 			"payload", env.Payload, "headers", env.Headers)
 
+		ctx = context.WithValue(ctx, "topic", topic)
 		err := pipe(ctx, env)
 		if err != nil {
 			klog.ErrorS(err, "error calling handler")

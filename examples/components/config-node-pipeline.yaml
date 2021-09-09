@@ -1,0 +1,15 @@
+apiVersion: rusi.io/v1alpha1
+kind: Configuration
+metadata:
+  name: node-pipeline-config
+spec:
+  metric:
+    enabled: true
+  tracing:
+    samplingRate: '1'
+    zipkin:
+      endpointAddress: 'http://kube-worker1.totalsoft.local:31034/api/traces'
+  subscriberPipeline:
+    handlers:
+    - name: pubsub-uppercase
+      type: middleware.pubsub.uppercase
