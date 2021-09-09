@@ -141,6 +141,7 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 		return errors.New(runtime_api.ErrPubsubNotFound)
 	}
 
+	ctx = context.WithValue(ctx, "topic", request.Topic)
 	midl := middleware.PublisherTracingMiddleware()
 	env := &messaging.MessageEnvelope{
 		Headers: request.Metadata,

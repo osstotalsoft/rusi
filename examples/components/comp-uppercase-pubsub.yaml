@@ -1,0 +1,10 @@
+apiVersion: rusi.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub-uppercase
+spec:
+  version: v1
+  type: middleware.pubsub.uppercase
+  metadata: 
+    - name: scopes
+      value: "*"

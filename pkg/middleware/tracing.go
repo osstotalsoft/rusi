@@ -16,7 +16,6 @@ func PublisherTracingMiddleware() messaging.Middleware {
 
 	return func(next messaging.Handler) messaging.Handler {
 		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
-
 			bags, spanCtx := Extract(ctx, msg.Headers)
 			ctx = baggage.ContextWithBaggage(ctx, bags)
 
