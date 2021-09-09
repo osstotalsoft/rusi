@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/propagators/jaeger"
-	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
 	"rusi/internal/tracing"
 	grpc_api "rusi/pkg/api/runtime/grpc"
@@ -23,13 +21,6 @@ func main() {
 	kube.InitFlags(nil)
 	defer klog.Flush()
 
-	tp, err := tracing.JaegerTracerProvider("http://kube-worker1.totalsoft.local:31034/api/traces")
-	if err != nil {
-		klog.Fatal(err)
-	}
-	tracing.SetTracing(tp, jaeger.Jaeger{})
-	defer tracing.FlushTracer(tp)(context.Background())
-
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
 	cfgBuilder.AttachCmdFlags(flag.StringVar, flag.BoolVar)
 	flag.Parse()
@@ -38,6 +29,14 @@ func main() {
 		klog.Error(err)
 		return
 	}
+
+	tp, err := tracing.JaegerTracerProvider(
+		"http://kube-worker1.totalsoft.local:31034/api/traces", "dev", cfg.AppID)
+	if err != nil {
+		klog.Fatal(err)
+	}
+	tracing.SetTracing(tp, jaeger.Jaeger{})
+	defer tracing.FlushTracer(tp)(context.Background())
 
 	compLoader := components_loader.LoadLocalComponents(cfg.ComponentsPath)
 	configLoader := configuration_loader.LoadStandaloneConfiguration
@@ -50,10 +49,9 @@ func main() {
 		return
 	}
 	rusiGrpcServer := grpc_api.NewRusiServer(rt.PublishHandler, rt.SubscribeHandler)
-	api := grpc_api.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort,
-		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
-	)
+	api := grpc_api.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort) //grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+	//grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+
 	err = rt.Load(RegisterComponentFactories()...)
 	if err != nil {
 		klog.Error(err)

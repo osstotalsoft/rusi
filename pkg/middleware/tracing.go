@@ -17,14 +17,16 @@ func PublisherTracingMiddleware() messaging.Middleware {
 	return func(next messaging.Handler) messaging.Handler {
 		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 
-			ctx, span := tr.Start(ctx,
+			bags, spanCtx := Extract(ctx, msg.Headers)
+			ctx = baggage.ContextWithBaggage(ctx, bags)
+
+			ctx, span := tr.Start(
+				trace.ContextWithRemoteSpanContext(ctx, spanCtx),
 				"Publish.Message",
 				trace.WithSpanKind(trace.SpanKindProducer))
 			defer span.End()
 
-			carrier := mapHeaderCarrier{msg.Headers}
 			Inject(ctx, msg.Headers)
-			msg.Headers = carrier.innerMap
 			klog.V(4).InfoS("tracing middleware hit")
 			return next(ctx, msg)
 		}
@@ -48,6 +50,9 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 			span.AddEvent("new message received",
 				trace.WithAttributes(attribute.String("headers", fmt.Sprintf("%v", msg.Headers))))
 			span.SetAttributes(attribute.Key("message").String(fmt.Sprintf("%v", *msg)))
+
+			Inject(ctx, msg.Headers)
+
 			defer span.End()
 			klog.V(4).InfoS("tracing middleware hit")
 			return next(ctx, msg)
