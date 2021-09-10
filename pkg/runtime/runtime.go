@@ -3,8 +3,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/custom-resource/components"
 	components_loader "rusi/pkg/custom-resource/components/loader"
@@ -16,6 +14,9 @@ import (
 	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
 	"strings"
+
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 )
 
 type runtime struct {
@@ -141,7 +142,7 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 		return errors.New(runtime_api.ErrPubsubNotFound)
 	}
 
-	ctx = context.WithValue(ctx, "topic", request.Topic)
+	ctx = context.WithValue(ctx, messaging.TopicKey, request.Topic)
 	midl := middleware.PublisherTracingMiddleware()
 	env := &messaging.MessageEnvelope{
 		Headers: request.Metadata,
