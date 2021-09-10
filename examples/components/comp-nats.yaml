@@ -1,0 +1,21 @@
+apiVersion: rusi.io/v1alpha1
+kind: Component
+metadata:
+  name: natsstreaming-pubsub
+spec:
+  type: pubsub.natsstreaming
+  version: v1
+  metadata:
+  - name: natsURL
+    value: "nats://kube-worker1.totalsoft.local:31291"
+  - name: natsStreamingClusterID
+    value: "faas-cluster"
+    # below are subscription configuration.
+  - name: subscriptionType
+    value: queue # Required. Allowed values: topic, queue.
+  - name: ackWaitTime
+    value: "" # Optional.
+  - name: maxInFlight
+    value: "1" # Optional.
+  - name: durableSubscriptionName
+    value: "" # Optional.

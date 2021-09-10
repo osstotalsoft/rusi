@@ -1,0 +1,9 @@
+apiVersion: rusi.io/v1alpha1
+kind: Configuration
+metadata:
+  name: api-pipeline-config
+spec:
+  publisherPipeline:
+    handlers:
+    - name: pubsub-uppercase
+      type: middleware.pubsub.uppercase

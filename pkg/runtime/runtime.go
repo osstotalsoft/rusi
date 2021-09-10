@@ -11,6 +11,7 @@ import (
 	"rusi/pkg/custom-resource/configuration"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"rusi/pkg/messaging"
+	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
 	"strings"
 
@@ -141,10 +142,8 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 		return errors.New(runtime_api.ErrPubsubNotFound)
 	}
 
-	//midl := middleware.PublisherTracingMiddleware()
-	midl := func(next messaging.Handler) messaging.Handler {
-		return next
-	}
+	ctx = context.WithValue(ctx, "topic", request.Topic)
+	midl := middleware.PublisherTracingMiddleware()
 	env := &messaging.MessageEnvelope{
 		Headers: request.Metadata,
 		Payload: string(request.Data),
