@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "./cmd/rusid",
-            "args": ["--app-id", "vs-code-debug", "--components-path", "C:\\Users\\rpopovici\\.rusi\\components","--config", "C:\\Users\\rpopovici\\.rusi\\components\\config-node-pipeline.yaml"]
+            "args": ["--app-id", "vs-code-debug", "--components-path", "./examples/components","--config", "./examples/components/config-node-pipeline.yaml"]
         }
 
     ]
