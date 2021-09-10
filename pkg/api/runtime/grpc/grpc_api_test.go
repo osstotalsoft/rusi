@@ -2,14 +2,46 @@ package grpc
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
 	"net"
+	"reflect"
 	"rusi/pkg/messaging"
 	v1 "rusi/pkg/proto/runtime/v1"
 	"testing"
+	"time"
+
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+func Test_grpc_to_messaging_subscriptionOptions(t *testing.T) {
+	durable, qGroup, maxConcurentMessages, ackWaitTime := "durable", true, int32(3), 10*time.Second
+
+	type args struct {
+		o *v1.SubscriptionOptions
+	}
+	tests := []struct {
+		name string
+		args args
+		want *messaging.SubscriptionOptions
+	}{
+		{"test nill subscription options", args{nil}, nil},
+		{"test empty subscription options", args{new(v1.SubscriptionOptions)}, new(messaging.SubscriptionOptions)},
+		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.String(durable)}}, &messaging.SubscriptionOptions{Durable: &durable}},
+		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.String(durable), QGroup: wrapperspb.Bool(qGroup), MaxConcurrentMessages: wrapperspb.Int32(int32(maxConcurentMessages))}}, &messaging.SubscriptionOptions{Durable: &durable, QGroup: &qGroup, MaxConcurrentMessages: &maxConcurentMessages}},
+		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.String(durable), QGroup: wrapperspb.Bool(qGroup), MaxConcurrentMessages: wrapperspb.Int32(int32(maxConcurentMessages)), AckWaitTime: durationpb.New(ackWaitTime)}}, &messaging.SubscriptionOptions{Durable: &durable, QGroup: &qGroup, MaxConcurrentMessages: &maxConcurentMessages, AckWaitTime: &ackWaitTime}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := messagingSubscriptionOptions(tt.args.o)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("messagingSubscriptionOptions() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func Test_RusiServer_Pubsub(t *testing.T) {
 

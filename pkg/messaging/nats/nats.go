@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"k8s.io/klog/v2"
 	"math/rand"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	"strconv"
 	"time"
+
+	"k8s.io/klog/v2"
 
 	nats "github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
@@ -46,7 +47,7 @@ const (
 )
 
 const (
-	consumerID       = "consumerID" // passed in by Dapr runtime
+	consumerID       = "consumerID" // passed in by rusi runtime
 	subscriptionType = "subscriptionType"
 )
 
@@ -203,14 +204,17 @@ func (n *natsStreamingPubSub) Publish(topic string, msg *messaging.MessageEnvelo
 	return nil
 }
 
-func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler) (messaging.UnsubscribeFunc, error) {
-	stanOptions, err := n.subscriptionOptions()
+func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler, options *messaging.SubscriptionOptions) (messaging.UnsubscribeFunc, error) {
+	mergedOptions, err := mergeGlobalAndSubscriptionOptions(n.options, options)
 	if err != nil {
 		return nil, fmt.Errorf("nats-streaming: error getting subscription options %s", err)
 	}
+	stanOptions, err := stanSubscriptionOptions(mergedOptions)
+	if err != nil {
+		return nil, fmt.Errorf("nats-streaming: error getting stan subscription options %s", err)
+	}
 
 	natsMsgHandler := func(natsMsg *stan.Msg) {
-
 		klog.InfoS("Processing NATS Streaming message", " subject", natsMsg.Subject,
 			"Sequence", natsMsg.Sequence)
 
@@ -229,45 +233,45 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler)
 	}
 
 	var subs stan.Subscription
-	if n.options.subscriptionType == subscriptionTypeTopic {
+	if mergedOptions.subscriptionType == subscriptionTypeTopic {
 		subs, err = n.natStreamingConn.Subscribe(topic, natsMsgHandler, stanOptions...)
-	} else if n.options.subscriptionType == subscriptionTypeQueueGroup {
+	} else if mergedOptions.subscriptionType == subscriptionTypeQueueGroup {
 		subs, err = n.natStreamingConn.QueueSubscribe(topic, n.options.natsQueueGroupName, natsMsgHandler, stanOptions...)
 	}
 
 	if err != nil || subs == nil {
 		return nil, fmt.Errorf("nats-streaming: subscribe error %s", err)
 	}
-	if n.options.subscriptionType == subscriptionTypeTopic {
+	if mergedOptions.subscriptionType == subscriptionTypeTopic {
 		klog.Infof("nats: subscribed to subject %s", topic)
-	} else if n.options.subscriptionType == subscriptionTypeQueueGroup {
-		klog.Infof("nats: subscribed to subject %s with queue group %s", topic, n.options.natsQueueGroupName)
+	} else if mergedOptions.subscriptionType == subscriptionTypeQueueGroup {
+		klog.Infof("nats: subscribed to subject %s with queue group %s", topic, mergedOptions.natsQueueGroupName)
 	}
 
 	return subs.Unsubscribe, nil
 }
 
-func (n *natsStreamingPubSub) subscriptionOptions() ([]stan.SubscriptionOption, error) {
+func stanSubscriptionOptions(opts options) ([]stan.SubscriptionOption, error) {
 	var options []stan.SubscriptionOption
 
-	if n.options.durableSubscriptionName != "" {
-		options = append(options, stan.DurableName(n.options.durableSubscriptionName))
+	if opts.durableSubscriptionName != "" {
+		options = append(options, stan.DurableName(opts.durableSubscriptionName))
 	}
 
 	switch {
-	case n.options.deliverNew == deliverNewTrue:
+	case opts.deliverNew == deliverNewTrue:
 		options = append(options, stan.StartAt(pb.StartPosition_NewOnly))
-	case n.options.startAtSequence >= 1: // messages index start from 1, this is a valid check
-		options = append(options, stan.StartAtSequence(n.options.startAtSequence))
-	case n.options.startWithLastReceived == startWithLastReceivedTrue:
+	case opts.startAtSequence >= 1: // messages index start from 1, this is a valid check
+		options = append(options, stan.StartAtSequence(opts.startAtSequence))
+	case opts.startWithLastReceived == startWithLastReceivedTrue:
 		options = append(options, stan.StartWithLastReceived())
-	case n.options.deliverAll == deliverAllTrue:
+	case opts.deliverAll == deliverAllTrue:
 		options = append(options, stan.DeliverAllAvailable())
-	case n.options.startAtTimeDelta > (1 * time.Nanosecond): // as long as its a valid time.Duration
-		options = append(options, stan.StartAtTimeDelta(n.options.startAtTimeDelta))
-	case n.options.startAtTime != "":
-		if n.options.startAtTimeFormat != "" {
-			startTime, err := time.Parse(n.options.startAtTimeFormat, n.options.startAtTime)
+	case opts.startAtTimeDelta > (1 * time.Nanosecond): // as long as its a valid time.Duration
+		options = append(options, stan.StartAtTimeDelta(opts.startAtTimeDelta))
+	case opts.startAtTime != "":
+		if opts.startAtTimeFormat != "" {
+			startTime, err := time.Parse(opts.startAtTimeFormat, opts.startAtTime)
 			if err != nil {
 				return nil, err
 			}
@@ -279,11 +283,11 @@ func (n *natsStreamingPubSub) subscriptionOptions() ([]stan.SubscriptionOption, 
 	options = append(options, stan.SetManualAckMode())
 
 	// check if set the ack options.
-	if n.options.ackWaitTime > (1 * time.Nanosecond) {
-		options = append(options, stan.AckWait(n.options.ackWaitTime))
+	if opts.ackWaitTime > (1 * time.Nanosecond) {
+		options = append(options, stan.AckWait(opts.ackWaitTime))
 	}
-	if n.options.maxInFlight >= 1 {
-		options = append(options, stan.MaxInflight(int(n.options.maxInFlight)))
+	if opts.maxInFlight >= 1 {
+		options = append(options, stan.MaxInflight(int(opts.maxInFlight)))
 	}
 
 	return options, nil
@@ -307,4 +311,38 @@ func (n *natsStreamingPubSub) Close() error {
 	n.cancel()
 
 	return n.natStreamingConn.Close()
+}
+
+func mergeGlobalAndSubscriptionOptions(globalOptions options, subscriptionOptions *messaging.SubscriptionOptions) (options, error) {
+	if subscriptionOptions == nil {
+		return globalOptions, nil
+	}
+
+	mergedOptions := globalOptions
+
+	if subscriptionOptions.Durable != nil {
+		mergedOptions.durableSubscriptionName = *subscriptionOptions.Durable
+	}
+	if subscriptionOptions.QGroup != nil {
+		if *subscriptionOptions.QGroup == false {
+			mergedOptions.natsQueueGroupName = ""
+		} else if mergedOptions.natsQueueGroupName == "" {
+			return mergedOptions, errors.New("nats-streaming error: missing queue group name")
+		}
+	}
+	if subscriptionOptions.MaxConcurrentMessages != nil {
+		mergedOptions.maxInFlight = uint64(*subscriptionOptions.MaxConcurrentMessages)
+	}
+	if subscriptionOptions.DeliverNewMessagesOnly != nil {
+		if *subscriptionOptions.DeliverNewMessagesOnly {
+			mergedOptions.deliverNew = deliverNewTrue
+		} else {
+			mergedOptions.deliverAll = deliverAllTrue
+		}
+	}
+	if subscriptionOptions.AckWaitTime != nil {
+		mergedOptions.ackWaitTime = *subscriptionOptions.AckWaitTime
+	}
+
+	return mergedOptions, nil
 }

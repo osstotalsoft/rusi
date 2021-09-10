@@ -1,10 +1,13 @@
 package natsstreaming
 
 import (
-	"github.com/stretchr/testify/assert"
+	"reflect"
+	"rusi/pkg/messaging"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseNATSStreamingForMetadataMandatoryOptionsMissing(t *testing.T) {
@@ -284,7 +287,7 @@ func TestSubscriptionOptionsForValidOptions(t *testing.T) {
 	for _, _test := range tests {
 		t.Run(_test.name, func(t *testing.T) {
 			natsStreaming := natsStreamingPubSub{options: _test.options}
-			opts, err := natsStreaming.subscriptionOptions()
+			opts, err := stanSubscriptionOptions(natsStreaming.options)
 			assert.Empty(t, err)
 			assert.NotEmpty(t, opts)
 			assert.Equal(t, _test.expectedNumberOfOptions, len(opts))
@@ -310,7 +313,7 @@ func TestSubscriptionOptionsForInvalidOptions(t *testing.T) {
 	for _, _test := range tests {
 		t.Run(_test.name, func(t *testing.T) {
 			natsStreaming := natsStreamingPubSub{options: _test.options}
-			opts, err := natsStreaming.subscriptionOptions()
+			opts, err := stanSubscriptionOptions(natsStreaming.options)
 			assert.Empty(t, err)
 			assert.NotEmpty(t, opts)
 			assert.Equal(t, 1, len(opts))
@@ -322,7 +325,7 @@ func TestSubscriptionOptions(t *testing.T) {
 	// general
 	t.Run("manual ACK option is present by default", func(t *testing.T) {
 		natsStreaming := natsStreamingPubSub{options: options{}}
-		opts, err := natsStreaming.subscriptionOptions()
+		opts, err := stanSubscriptionOptions(natsStreaming.options)
 		assert.Empty(t, err)
 		assert.NotEmpty(t, opts)
 		assert.Equal(t, 1, len(opts))
@@ -331,7 +334,7 @@ func TestSubscriptionOptions(t *testing.T) {
 	t.Run("only one subscription option will be honored", func(t *testing.T) {
 		m := options{deliverNew: deliverNewTrue, deliverAll: deliverAllTrue, startAtTimeDelta: 1 * time.Hour}
 		natsStreaming := natsStreamingPubSub{options: m}
-		opts, err := natsStreaming.subscriptionOptions()
+		opts, err := stanSubscriptionOptions(natsStreaming.options)
 		assert.Empty(t, err)
 		assert.NotEmpty(t, opts)
 		assert.Equal(t, 2, len(opts))
@@ -342,7 +345,7 @@ func TestSubscriptionOptions(t *testing.T) {
 	t.Run("startAtTime is invalid", func(t *testing.T) {
 		m := options{startAtTime: "foobar", startAtTimeFormat: "Jan 2, 2006 at 3:04pm (MST)"}
 		natsStreaming := natsStreamingPubSub{options: m}
-		opts, err := natsStreaming.subscriptionOptions()
+		opts, err := stanSubscriptionOptions(natsStreaming.options)
 		assert.NotEmpty(t, err)
 		assert.Nil(t, opts)
 	})
@@ -351,7 +354,7 @@ func TestSubscriptionOptions(t *testing.T) {
 		m := options{startAtTime: "Feb 3, 2013 at 7:54pm (PST)", startAtTimeFormat: "foo"}
 
 		natsStreaming := natsStreamingPubSub{options: m}
-		opts, err := natsStreaming.subscriptionOptions()
+		opts, err := stanSubscriptionOptions(natsStreaming.options)
 		assert.NotEmpty(t, err)
 		assert.Nil(t, opts)
 	})
@@ -374,4 +377,71 @@ func TestGenRandomString(t *testing.T) {
 		assert.NotNil(t, clientID)
 		assert.Equal(t, 20, len(clientID))
 	})
+}
+
+func TestMergeGlobalAndSubscriptionOptions(t *testing.T) {
+	globalSubscriptionOptions := options{
+		natsURL:                 "natsUrl",
+		natsStreamingClusterID:  "natsStreamingClusterID",
+		subscriptionType:        "subscriptionType",
+		natsQueueGroupName:      "natsQueueGroupName",
+		durableSubscriptionName: "durableSubscriptionName",
+		deliverNew:              deliverNewTrue,
+		ackWaitTime:             time.Second,
+		maxInFlight:             1,
+	}
+	emptyDurable, qGroupFalse, qGroupTrue, maxConcurrentMessages10, ackWaitTime1Minute := "", false, true, int32(10), time.Minute
+
+	type args struct {
+		globalOptions       options
+		subscriptionOptions *messaging.SubscriptionOptions
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    func() options
+		wantErr bool
+	}{
+		{"test nill subscription options", args{globalSubscriptionOptions, nil}, func() options { return globalSubscriptionOptions }, false},
+		{"test empty subscription options", args{globalSubscriptionOptions, new(messaging.SubscriptionOptions)}, func() options { return globalSubscriptionOptions }, false},
+		{"test subscription options with durable set", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{Durable: &emptyDurable}}, func() options {
+			result := globalSubscriptionOptions
+			result.durableSubscriptionName = emptyDurable
+			return result
+		}, false},
+		{"test subscription options with qGroup false", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{QGroup: &qGroupFalse}}, func() options {
+			result := globalSubscriptionOptions
+			result.natsQueueGroupName = ""
+			return result
+		}, false},
+		{"test subscription options with qGroup true and global options qGroupName set", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{QGroup: &qGroupTrue}}, func() options {
+			return globalSubscriptionOptions
+		}, false},
+		{"test subscription options with qGroup true and global options qGroupName not set", args{options{natsQueueGroupName: ""}, &messaging.SubscriptionOptions{QGroup: &qGroupTrue}}, func() options {
+			return options{}
+		}, true},
+		{"test subscription options with maxConcurrentMessages set", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{MaxConcurrentMessages: &maxConcurrentMessages10}}, func() options {
+			result := globalSubscriptionOptions
+			result.maxInFlight = uint64(maxConcurrentMessages10)
+			return result
+		}, false},
+		{"test subscription options with ackWaitTime set", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{AckWaitTime: &ackWaitTime1Minute}}, func() options {
+			result := globalSubscriptionOptions
+			result.ackWaitTime = ackWaitTime1Minute
+			return result
+		}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := mergeGlobalAndSubscriptionOptions(tt.args.globalOptions, tt.args.subscriptionOptions)
+			if err != nil && !tt.wantErr {
+				t.Errorf("mergeGlobalAndSubscriptionOptions() error = %v", err)
+				return
+			}
+			want := tt.want()
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("mergeGlobalAndSubscriptionOptions() got = %v, want %v", got, want)
+			}
+		})
+	}
 }

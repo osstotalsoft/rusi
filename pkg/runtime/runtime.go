@@ -162,7 +162,7 @@ func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.Subsc
 		return nil, err
 	}
 	srv := service.NewSubscriberService(subs, pipeline)
-	return srv.StartSubscribing(request.Topic, request.Handler)
+	return srv.StartSubscribing(request)
 }
 
 func extractComponentCategory(spec components.Spec) components.ComponentCategory {
