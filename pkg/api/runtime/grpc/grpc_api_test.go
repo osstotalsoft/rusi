@@ -89,7 +89,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.SubscribeRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-			}, "{\"headers\":null,\"payload\":\"data1\"}", false,
+			}, "{\"headers\":{},\"payload\":\"data1\"}", false,
 		},
 		{"test pubsub with one message and headers",
 			&v1.PublishRequest{

@@ -34,3 +34,7 @@ type SubscriptionOptions struct {
 	DeliverNewMessagesOnly *bool
 	AckWaitTime            *time.Duration
 }
+
+const (
+	TopicKey = "topic"
+)
