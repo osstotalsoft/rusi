@@ -43,15 +43,15 @@ message SubscribeRequest {
   string pubsub_name = 1;
   // The pubsub topic
   string topic = 2;
-	SubscriptionOptions options = 3;
+  SubscriptionOptions options = 3;
 }
 
 message SubscriptionOptions {
-	google.protobuf.StringValue durable = 1;             
-	google.protobuf.BoolValue qGroup = 2;              
-	google.protobuf.Int32Value maxConcurrentMessages = 3;
-	google.protobuf.BoolValue deliverNewMessagesOnly = 4;
-	google.protobuf.Duration ackWaitTime = 5;    
+  google.protobuf.StringValue durable = 1;
+  google.protobuf.BoolValue qGroup = 2;
+  google.protobuf.Int32Value maxConcurrentMessages = 3;
+  google.protobuf.BoolValue deliverNewMessagesOnly = 4;
+  google.protobuf.Duration ackWaitTime = 5;
 }
 
 
