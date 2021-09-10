@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
-	"k8s.io/klog/v2"
 	"rusi/pkg/messaging"
 	"rusi/pkg/middleware"
+
+	"k8s.io/klog/v2"
 )
 
 type subscriberService struct {
@@ -26,7 +27,7 @@ func (srv *subscriberService) StartSubscribing(topic string, handler messaging.H
 		klog.InfoS("message received on", "topic", topic,
 			"payload", env.Payload, "headers", env.Headers)
 
-		ctx = context.WithValue(ctx, "topic", topic)
+		ctx = context.WithValue(ctx, messaging.TopicKey, topic)
 		err := pipe(ctx, env)
 		if err != nil {
 			klog.ErrorS(err, "error calling handler")

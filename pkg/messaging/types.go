@@ -22,3 +22,7 @@ type SubscribeRequest struct {
 	Topic      string
 	Handler    Handler
 }
+
+const (
+	TopicKey = "topic"
+)

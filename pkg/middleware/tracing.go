@@ -20,7 +20,7 @@ func PublisherTracingMiddleware() messaging.Middleware {
 		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 			bags, spanCtx := Extract(ctx, msg.Headers)
 			ctx = baggage.ContextWithBaggage(ctx, bags)
-			topic := ctx.Value("topic").(string)
+			topic := ctx.Value(messaging.TopicKey).(string)
 
 			// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
 			ctx, span := tr.Start(
@@ -48,7 +48,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 
 			bags, spanCtx := Extract(ctx, msg.Headers)
 			ctx = baggage.ContextWithBaggage(ctx, bags)
-			topic := ctx.Value("topic").(string)
+			topic := ctx.Value(messaging.TopicKey).(string)
 
 			// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
 			ctx, span := tr.Start(
