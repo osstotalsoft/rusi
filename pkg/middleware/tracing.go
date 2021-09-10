@@ -3,12 +3,14 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"rusi/pkg/messaging"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/klog/v2"
-	"rusi/pkg/messaging"
 )
 
 func PublisherTracingMiddleware() messaging.Middleware {
@@ -18,11 +20,17 @@ func PublisherTracingMiddleware() messaging.Middleware {
 		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 			bags, spanCtx := Extract(ctx, msg.Headers)
 			ctx = baggage.ContextWithBaggage(ctx, bags)
+			topic := ctx.Value("topic").(string)
 
+			// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
 			ctx, span := tr.Start(
 				trace.ContextWithRemoteSpanContext(ctx, spanCtx),
-				"Publish.Message",
-				trace.WithSpanKind(trace.SpanKindProducer))
+				fmt.Sprintf("%s send", topic),
+				trace.WithSpanKind(trace.SpanKindProducer),
+				trace.WithAttributes(
+					semconv.MessagingDestinationKey.String(topic),
+					semconv.MessagingDestinationKindTopic))
+
 			defer span.End()
 
 			Inject(ctx, msg.Headers)
@@ -40,11 +48,16 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 
 			bags, spanCtx := Extract(ctx, msg.Headers)
 			ctx = baggage.ContextWithBaggage(ctx, bags)
+			topic := ctx.Value("topic").(string)
 
+			// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
 			ctx, span := tr.Start(
 				trace.ContextWithRemoteSpanContext(ctx, spanCtx),
-				"Subscriber.Message",
-				trace.WithSpanKind(trace.SpanKindConsumer))
+				fmt.Sprintf("%s receive", topic),
+				trace.WithSpanKind(trace.SpanKindConsumer),
+				trace.WithAttributes(
+					semconv.MessagingDestinationKey.String(topic),
+					semconv.MessagingDestinationKindTopic))
 
 			span.AddEvent("new message received",
 				trace.WithAttributes(attribute.String("headers", fmt.Sprintf("%v", msg.Headers))))
