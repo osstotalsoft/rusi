@@ -57,7 +57,8 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 				trace.WithSpanKind(trace.SpanKindConsumer),
 				trace.WithAttributes(
 					semconv.MessagingDestinationKey.String(topic),
-					semconv.MessagingDestinationKindTopic))
+					semconv.MessagingDestinationKindTopic,
+					semconv.MessagingOperationReceive))
 
 			span.AddEvent("new message received",
 				trace.WithAttributes(attribute.String("headers", fmt.Sprintf("%v", msg.Headers))))
