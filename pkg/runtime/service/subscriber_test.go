@@ -11,8 +11,7 @@ func Test_subscriberService_StartSubscribing(t *testing.T) {
 		subscriber messaging.Subscriber
 	}
 	type args struct {
-		topic   string
-		handler messaging.Handler
+		request messaging.SubscribeRequest
 	}
 	tests := []struct {
 		name    string
@@ -28,7 +27,7 @@ func Test_subscriberService_StartSubscribing(t *testing.T) {
 			srv := &subscriberService{
 				subscriber: tt.fields.subscriber,
 			}
-			got, err := srv.StartSubscribing(tt.args.topic, tt.args.handler)
+			got, err := srv.StartSubscribing(tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("StartSubscribing() error = %v, wantErr %v", err, tt.wantErr)
 				return

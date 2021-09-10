@@ -3,8 +3,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/custom-resource/components"
 	components_loader "rusi/pkg/custom-resource/components/loader"
@@ -13,9 +11,11 @@ import (
 	"rusi/pkg/custom-resource/configuration"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"rusi/pkg/messaging"
-	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
 	"strings"
+
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 )
 
 type runtime struct {
@@ -141,7 +141,10 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 		return errors.New(runtime_api.ErrPubsubNotFound)
 	}
 
-	midl := middleware.PublisherTracingMiddleware()
+	//midl := middleware.PublisherTracingMiddleware()
+	midl := func(next messaging.Handler) messaging.Handler {
+		return next
+	}
 	env := &messaging.MessageEnvelope{
 		Headers: request.Metadata,
 		Payload: string(request.Data),
@@ -160,7 +163,7 @@ func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.Subsc
 		return nil, err
 	}
 	srv := service.NewSubscriberService(subs, pipeline)
-	return srv.StartSubscribing(request.Topic, request.Handler)
+	return srv.StartSubscribing(request)
 }
 
 func extractComponentCategory(spec components.Spec) components.ComponentCategory {

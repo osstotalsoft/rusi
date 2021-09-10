@@ -3,16 +3,17 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"k8s.io/klog/v2"
 	"net"
 	"rusi/pkg/api/runtime"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"k8s.io/klog/v2"
 )
 
 func NewGrpcAPI(server v1.RusiServer, port string, serverOptions ...grpc.ServerOption) runtime.Api {
@@ -65,6 +66,7 @@ func (srv *server) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Ru
 				Metadata: env.Headers,
 			})
 		},
+		Options: messagingSubscriptionOptions(request.GetOptions()),
 	})
 
 	if err != nil {
@@ -102,4 +104,35 @@ func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*em
 		err = status.Errorf(codes.Unknown, err.Error())
 	}
 	return &emptypb.Empty{}, err
+}
+
+func messagingSubscriptionOptions(o *v1.SubscriptionOptions) *messaging.SubscriptionOptions {
+	if o == nil {
+		return nil
+	}
+
+	so := new(messaging.SubscriptionOptions)
+
+	if o.Durable != nil {
+		durable := o.Durable.Value
+		so.Durable = &durable
+	}
+	if o.QGroup != nil {
+		qGroup := o.QGroup.Value
+		so.QGroup = &qGroup
+	}
+	if o.MaxConcurrentMessages != nil {
+		maxConcurrentMessages := o.MaxConcurrentMessages.Value
+		so.MaxConcurrentMessages = &maxConcurrentMessages
+	}
+	if o.DeliverNewMessagesOnly != nil {
+		deliverNewMessagesOnly := o.DeliverNewMessagesOnly.Value
+		so.DeliverNewMessagesOnly = &deliverNewMessagesOnly
+	}
+	if o.AckWaitTime != nil {
+		duration := o.AckWaitTime.AsDuration()
+		so.AckWaitTime = &duration
+	}
+
+	return so
 }

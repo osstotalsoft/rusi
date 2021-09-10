@@ -1,6 +1,9 @@
 package messaging
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type MessageEnvelope struct {
 	Headers map[string]string `json:"headers"`
@@ -21,4 +24,13 @@ type SubscribeRequest struct {
 	PubsubName string
 	Topic      string
 	Handler    Handler
+	Options    *SubscriptionOptions
+}
+
+type SubscriptionOptions struct {
+	Durable                *string
+	QGroup                 *bool
+	MaxConcurrentMessages  *int32
+	DeliverNewMessagesOnly *bool
+	AckWaitTime            *time.Duration
 }

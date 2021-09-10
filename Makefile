@@ -15,6 +15,7 @@ HELM_CHART_ROOT:=./helm
 # Target: build-linux                                                          #
 ################################################################################
 build-linux:
+	mkdir -p $(OUT_DIR)
 	GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector
 
 modtidy:
