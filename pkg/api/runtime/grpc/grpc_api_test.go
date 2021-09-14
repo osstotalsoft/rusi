@@ -5,13 +5,16 @@ import (
 	"net"
 	"reflect"
 	"rusi/pkg/messaging"
+	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
+
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -49,7 +52,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 	publishHandler := func(ctx context.Context, request messaging.PublishRequest) error {
 		store[request.Topic] = messaging.MessageEnvelope{
 			Headers: request.Metadata,
-			Payload: string(request.Data),
+			Payload: request.Data,
 		}
 		return nil
 	}
@@ -75,7 +78,8 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		name             string
 		publishRequest   *v1.PublishRequest
 		subscribeRequest *v1.SubscribeRequest
-		want             string
+		wantData         string
+		wantMetadata     map[string]string
 		wantErr          bool
 	}{
 		// TODO: Add test cases.
@@ -83,25 +87,25 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.PublishRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-				Data:       []byte("data1"),
+				Data:       []byte("\"data1\""),
 				Metadata:   nil,
 			},
 			&v1.SubscribeRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-			}, "{\"headers\":{},\"payload\":\"data1\"}", false,
+			}, "data1", map[string]string(nil), false,
 		},
 		{"test pubsub with one message and headers",
 			&v1.PublishRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-				Data:       []byte("data1"),
+				Data:       []byte("\"data1\""),
 				Metadata:   map[string]string{"ip": "10"},
 			},
 			&v1.SubscribeRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-			}, "{\"headers\":{\"ip\":\"10\"},\"payload\":\"data1\"}", false,
+			}, "data1", map[string]string{"ip": "10"}, false,
 		},
 		{"test pub on topic t1 and sub on t2",
 			&v1.PublishRequest{
@@ -113,7 +117,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.SubscribeRequest{
 				PubsubName: "p1",
 				Topic:      "t2",
-			}, "", true,
+			}, "", nil, true,
 		},
 	}
 
@@ -131,10 +135,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 				t.Errorf("Subscribe() error = %v", err)
 				return
 			}
-			if tt.want != string(msg.GetData()) {
-				t.Errorf("Expected %s, got %s", tt.want, msg.GetData())
-				return
-			}
+			var data string
+			_ = serdes.Unmarshal(msg.GetData(), &data)
+			assert.Equal(t, tt.wantData, data)
+			assert.Equal(t, tt.wantMetadata, msg.GetMetadata())
 		})
 	}
 }
