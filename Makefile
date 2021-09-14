@@ -34,7 +34,8 @@ upgrade-all:
 	go get -u ./...
 	go mod tidy
 
-
+test:
+	go test ./...
 
 include docker/docker.mk
 include pkg/operator/tools/generate_kube_crd.mk

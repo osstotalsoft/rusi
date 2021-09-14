@@ -28,7 +28,7 @@ type SubscribeRequest struct {
 }
 
 type SubscriptionOptions struct {
-	Durable                *string
+	Durable                *bool
 	QGroup                 *bool
 	MaxConcurrentMessages  *int32
 	DeliverNewMessagesOnly *bool

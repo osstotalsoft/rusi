@@ -17,7 +17,7 @@ import (
 )
 
 func Test_grpc_to_messaging_subscriptionOptions(t *testing.T) {
-	durable, qGroup, maxConcurentMessages, ackWaitTime := "durable", true, int32(3), 10*time.Second
+	durable, qGroup, maxConcurentMessages, ackWaitTime := true, true, int32(3), 10*time.Second
 
 	type args struct {
 		o *v1.SubscriptionOptions
@@ -29,9 +29,9 @@ func Test_grpc_to_messaging_subscriptionOptions(t *testing.T) {
 	}{
 		{"test nill subscription options", args{nil}, nil},
 		{"test empty subscription options", args{new(v1.SubscriptionOptions)}, new(messaging.SubscriptionOptions)},
-		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.String(durable)}}, &messaging.SubscriptionOptions{Durable: &durable}},
-		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.String(durable), QGroup: wrapperspb.Bool(qGroup), MaxConcurrentMessages: wrapperspb.Int32(int32(maxConcurentMessages))}}, &messaging.SubscriptionOptions{Durable: &durable, QGroup: &qGroup, MaxConcurrentMessages: &maxConcurentMessages}},
-		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.String(durable), QGroup: wrapperspb.Bool(qGroup), MaxConcurrentMessages: wrapperspb.Int32(int32(maxConcurentMessages)), AckWaitTime: durationpb.New(ackWaitTime)}}, &messaging.SubscriptionOptions{Durable: &durable, QGroup: &qGroup, MaxConcurrentMessages: &maxConcurentMessages, AckWaitTime: &ackWaitTime}},
+		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.Bool(durable)}}, &messaging.SubscriptionOptions{Durable: &durable}},
+		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.Bool(durable), QGroup: wrapperspb.Bool(qGroup), MaxConcurrentMessages: wrapperspb.Int32(int32(maxConcurentMessages))}}, &messaging.SubscriptionOptions{Durable: &durable, QGroup: &qGroup, MaxConcurrentMessages: &maxConcurentMessages}},
+		{"some subscription options", args{&v1.SubscriptionOptions{Durable: wrapperspb.Bool(durable), QGroup: wrapperspb.Bool(qGroup), MaxConcurrentMessages: wrapperspb.Int32(int32(maxConcurentMessages)), AckWaitTime: durationpb.New(ackWaitTime)}}, &messaging.SubscriptionOptions{Durable: &durable, QGroup: &qGroup, MaxConcurrentMessages: &maxConcurentMessages, AckWaitTime: &ackWaitTime}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
