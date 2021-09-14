@@ -57,7 +57,7 @@ func (srv *server) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Ru
 		PubsubName: request.GetPubsubName(),
 		Topic:      request.GetTopic(),
 		Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
-			data, err := serdes.Marshal(env)
+			data, err := serdes.Marshal(env.Payload)
 			if err != nil {
 				return err
 			}
@@ -82,13 +82,13 @@ func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*em
 
 	if request.PubsubName == "" {
 		err := status.Error(codes.InvalidArgument, runtime.ErrPubsubEmpty)
-		klog.V(4).Info(err)
+		klog.ErrorS(err, "missing pubsub name")
 		return &emptypb.Empty{}, err
 	}
 
 	if request.Topic == "" {
 		err := status.Errorf(codes.InvalidArgument, runtime.ErrTopicEmpty, request.PubsubName)
-		klog.V(4).Info(err)
+		klog.ErrorS(err, "missing topic")
 		return &emptypb.Empty{}, err
 	}
 
@@ -97,10 +97,17 @@ func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*em
 		metadata = make(map[string]string)
 	}
 
-	err := srv.publishHandler(ctx, messaging.PublishRequest{
+	var data interface{}
+	err := serdes.Unmarshal(request.GetData(), &data)
+	if err != nil {
+		klog.ErrorS(err, "error unmarshalling", "payload", request.GetData())
+		return &emptypb.Empty{}, err
+	}
+
+	err = srv.publishHandler(ctx, messaging.PublishRequest{
 		PubsubName: request.GetPubsubName(),
 		Topic:      request.GetTopic(),
-		Data:       request.GetData(),
+		Data:       data,
 		Metadata:   metadata,
 	})
 

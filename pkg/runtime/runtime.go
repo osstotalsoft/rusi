@@ -141,13 +141,13 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 	if publisher == nil {
 		return errors.New(runtime_api.ErrPubsubNotFound)
 	}
+	env := &messaging.MessageEnvelope{
+		Headers: request.Metadata,
+		Payload: request.Data,
+	}
 
 	ctx = context.WithValue(ctx, messaging.TopicKey, request.Topic)
 	midl := middleware.PublisherTracingMiddleware()
-	env := &messaging.MessageEnvelope{
-		Headers: request.Metadata,
-		Payload: string(request.Data),
-	}
 
 	return midl(func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 		return publisher.Publish(request.Topic, msg)

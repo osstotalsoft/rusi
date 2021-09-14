@@ -16,7 +16,7 @@ type Handler func(ctx context.Context, msg *MessageEnvelope) error
 type PublishRequest struct {
 	PubsubName string
 	Topic      string
-	Data       []byte
+	Data       interface{}
 	Metadata   map[string]string
 }
 
