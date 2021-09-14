@@ -47,7 +47,7 @@ message SubscribeRequest {
 }
 
 message SubscriptionOptions {
-  google.protobuf.StringValue durable = 1;
+  google.protobuf.BoolValue durable = 1;
   google.protobuf.BoolValue qGroup = 2;
   google.protobuf.Int32Value maxConcurrentMessages = 3;
   google.protobuf.BoolValue deliverNewMessagesOnly = 4;

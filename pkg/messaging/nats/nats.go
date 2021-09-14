@@ -321,8 +321,15 @@ func mergeGlobalAndSubscriptionOptions(globalOptions options, subscriptionOption
 	mergedOptions := globalOptions
 
 	if subscriptionOptions.Durable != nil {
-		mergedOptions.durableSubscriptionName = *subscriptionOptions.Durable
+		if *subscriptionOptions.Durable {
+			if mergedOptions.durableSubscriptionName == "" {
+				mergedOptions.durableSubscriptionName = "durable"
+			}
+		} else {
+			mergedOptions.durableSubscriptionName = ""
+		}
 	}
+
 	if subscriptionOptions.QGroup != nil {
 		if *subscriptionOptions.QGroup == false {
 			mergedOptions.natsQueueGroupName = ""

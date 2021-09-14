@@ -390,7 +390,7 @@ func TestMergeGlobalAndSubscriptionOptions(t *testing.T) {
 		ackWaitTime:             time.Second,
 		maxInFlight:             1,
 	}
-	emptyDurable, qGroupFalse, qGroupTrue, maxConcurrentMessages10, ackWaitTime1Minute := "", false, true, int32(10), time.Minute
+	durableFalse, emptyDurableName, qGroupFalse, qGroupTrue, maxConcurrentMessages10, ackWaitTime1Minute := false, "", false, true, int32(10), time.Minute
 
 	type args struct {
 		globalOptions       options
@@ -404,9 +404,9 @@ func TestMergeGlobalAndSubscriptionOptions(t *testing.T) {
 	}{
 		{"test nill subscription options", args{globalSubscriptionOptions, nil}, func() options { return globalSubscriptionOptions }, false},
 		{"test empty subscription options", args{globalSubscriptionOptions, new(messaging.SubscriptionOptions)}, func() options { return globalSubscriptionOptions }, false},
-		{"test subscription options with durable set", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{Durable: &emptyDurable}}, func() options {
+		{"test subscription options with durable set", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{Durable: &durableFalse}}, func() options {
 			result := globalSubscriptionOptions
-			result.durableSubscriptionName = emptyDurable
+			result.durableSubscriptionName = emptyDurableName
 			return result
 		}, false},
 		{"test subscription options with qGroup false", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{QGroup: &qGroupFalse}}, func() options {
