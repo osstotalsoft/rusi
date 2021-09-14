@@ -139,7 +139,7 @@ func (rt *runtime) buildSubscriberPipeline() (pipeline messaging.Pipeline, err e
 func (rt *runtime) PublishHandler(ctx context.Context, request messaging.PublishRequest) error {
 	publisher := rt.pubsubFactory.GetPublisher(request.PubsubName)
 	if publisher == nil {
-		return errors.New(runtime_api.ErrPubsubNotFound)
+		return errors.New(fmt.Sprintf(runtime_api.ErrPubsubNotFound, request.PubsubName))
 	}
 	env := &messaging.MessageEnvelope{
 		Headers: request.Metadata,
@@ -156,6 +156,11 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 
 func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
 	subs := rt.pubsubFactory.GetSubscriber(request.PubsubName)
+	if subs == nil {
+		err := errors.New(fmt.Sprintf("cannot find PubsubName named %s", request.PubsubName))
+		klog.ErrorS(err, err.Error())
+		return nil, err
+	}
 	pipeline, err := rt.buildSubscriberPipeline()
 	if err != nil {
 		klog.ErrorS(err, "error building pipeline")

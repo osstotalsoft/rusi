@@ -44,8 +44,10 @@ message PublishRequest {
 message SubscribeRequest {
   // The name of the pubsub component
   string pubsub_name = 1;
+
   // The pubsub topic
   string topic = 2;
+
   SubscriptionOptions options = 3;
 }
 
