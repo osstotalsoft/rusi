@@ -1,7 +1,8 @@
 package loader
 
 import (
+	"context"
 	"rusi/pkg/custom-resource/components"
 )
 
-type ComponentsLoader func() ([]components.Spec, error)
+type ComponentsLoader func(ctx context.Context) (<-chan components.Spec, error)

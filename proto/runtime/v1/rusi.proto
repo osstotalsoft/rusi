@@ -16,8 +16,7 @@ service Rusi {
   rpc Publish(PublishRequest) returns (google.protobuf.Empty);
 
   // Subscribe pushes events on the stream
-  rpc Subscribe(SubscribeRequest) returns (stream ReceivedMessage);
-
+  rpc Subscribe(stream SubscribeRequest) returns (stream ReceivedMessage);
 }
 
 // PublishRequest is the message to publish data to pubsub topic
@@ -42,6 +41,18 @@ message PublishRequest {
 }
 
 message SubscribeRequest {
+  oneof RequestType {
+    SubscriptionRequest request = 1;
+    Ack ack = 2;
+  }
+}
+
+message Ack {
+  bool ack = 1;
+  string error = 2;
+}
+
+message SubscriptionRequest {
   // The name of the pubsub component
   string pubsub_name = 1;
 

@@ -16,14 +16,29 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func NewGrpcAPI(server v1.RusiServer, port string, serverOptions ...grpc.ServerOption) runtime.Api {
-	return &grpcApi{port, server, serverOptions}
+func NewGrpcAPI(port string, serverOptions ...grpc.ServerOption) runtime.Api {
+
+	srv := &rusiServerImpl{
+		make(chan bool),
+		nil,
+		nil}
+	return &grpcApi{port, srv, serverOptions}
 }
 
 type grpcApi struct {
 	port          string
-	server        v1.RusiServer
+	server        *rusiServerImpl
 	serverOptions []grpc.ServerOption
+}
+
+func (srv *grpcApi) SetPublishHandler(publishHandler messaging.PublishRequestHandler) {
+	srv.server.publishHandler = publishHandler
+}
+func (srv *grpcApi) SetSubscribeHandler(subscribeHandler messaging.SubscribeRequestHandler) {
+	srv.server.subscribeHandler = subscribeHandler
+}
+func (srv *grpcApi) Refresh() error {
+	return srv.server.Refresh()
 }
 
 func (srv *grpcApi) Serve() error {
@@ -38,47 +53,62 @@ func (srv *grpcApi) Serve() error {
 	return grpcServer.Serve(lis)
 }
 
-func NewRusiServer(publishHandler func(ctx context.Context, request messaging.PublishRequest) error,
-	subscribeHandler func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)) v1.RusiServer {
-	return &server{publishHandler, subscribeHandler}
+type rusiServerImpl struct {
+	refresh          chan bool
+	publishHandler   messaging.PublishRequestHandler
+	subscribeHandler messaging.SubscribeRequestHandler
 }
 
-type server struct {
-	publishHandler   func(ctx context.Context, request messaging.PublishRequest) error
-	subscribeHandler func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error)
+func (srv *rusiServerImpl) Refresh() error {
+	srv.refresh <- true
+	return nil
 }
 
 // Subscribe creates a subscription
-func (srv *server) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Rusi_SubscribeServer) error {
+func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Rusi_SubscribeServer) error {
 	ctx, cancel := context.WithCancel(subscribeServer.Context())
 	defer cancel()
+	exit := false
 
-	unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
-		PubsubName: request.GetPubsubName(),
-		Topic:      request.GetTopic(),
-		Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
-			data, err := serdes.Marshal(env.Payload)
-			if err != nil {
-				return err
-			}
-			return subscribeServer.Send(&v1.ReceivedMessage{
-				Data:     data,
-				Metadata: env.Headers,
-			})
-		},
-		Options: messagingSubscriptionOptions(request.GetOptions()),
-	})
+	for {
+		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
+			PubsubName: request.GetPubsubName(),
+			Topic:      request.GetTopic(),
+			Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
+				data, err := serdes.Marshal(env.Payload)
+				if err != nil {
+					return err
+				}
+				return subscribeServer.Send(&v1.ReceivedMessage{
+					Data:     data,
+					Metadata: env.Headers,
+				})
+			},
+			Options: messagingSubscriptionOptions(request.GetOptions()),
+		})
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
+
+		//blocks until done or refresh
+		select {
+		case <-ctx.Done():
+			exit = true
+		case <-srv.refresh:
+			exit = false
+		}
+		err = unsub()
+		if err != nil {
+			return err
+		}
+		if exit {
+			return ctx.Err()
+		}
 	}
-	defer unsub()
-
-	<-ctx.Done()
-	return ctx.Err()
 }
 
-func (srv *server) Publish(ctx context.Context, request *v1.PublishRequest) (*emptypb.Empty, error) {
+func (srv *rusiServerImpl) Publish(ctx context.Context, request *v1.PublishRequest) (*emptypb.Empty, error) {
 
 	if request.PubsubName == "" {
 		err := status.Error(codes.InvalidArgument, runtime.ErrPubsubEmpty)

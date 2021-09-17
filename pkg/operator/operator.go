@@ -13,48 +13,48 @@ import (
 	"strings"
 )
 
-func ListComponents() ([]components.Spec, error) {
+func ListComponents(ctx context.Context) (<-chan components.Spec, error) {
+	c := make(chan components.Spec)
 	cfg := kube.GetConfig()
 	client, _ := versioned.NewForConfig(cfg)
 
-	ctx := context.Background()
 	namespace := kube.GetCurrentNamespace()
 
 	list, err := client.ComponentsV1alpha1().Components(namespace).List(ctx, v1.ListOptions{})
-	var res []components.Spec
 	if err != nil {
-		return nil, err
+		return c, err
 	}
 	for _, item := range list.Items {
-		res = append(res, components.Spec{
+		c <- components.Spec{
 			Name:     item.Name,
 			Type:     item.Spec.Type,
 			Version:  item.Spec.Version,
 			Metadata: convertMetadataItemsToProperties(item.Spec.Metadata),
 			Scopes:   item.Scopes,
-		})
+		}
 	}
 
-	return res, nil
+	return c, nil
 }
 
-func GetConfiguration(name string) (configuration.Spec, error) {
+func GetConfiguration(ctx context.Context, name string) (<-chan configuration.Spec, error) {
 	cfg := kube.GetConfig()
+	c := make(chan configuration.Spec)
 	client, _ := versioned.NewForConfig(cfg)
 	spec := configuration.Spec{}
 
-	ctx := context.Background()
 	namespace := kube.GetCurrentNamespace()
 
 	conf, err := client.ConfigurationV1alpha1().Configurations(namespace).Get(ctx, name, v1.GetOptions{})
 	if err != nil {
-		return spec, err
+		return c, err
 	}
 	//deep copy
 	temporaryVariable, _ := json.Marshal(conf.Spec)
 	err = json.Unmarshal(temporaryVariable, &spec)
 
-	return spec, err
+	c <- spec
+	return c, err
 }
 
 func convertMetadataItemsToProperties(items []compv1.MetadataItem) map[string]string {

@@ -3,6 +3,7 @@ package loader
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -44,7 +45,9 @@ type metadataItem struct {
 
 // LoadLocalComponents loads rusi components from a given directory.
 func LoadLocalComponents(componentsPath string) ComponentsLoader {
-	return func() ([]components.Spec, error) {
+	return func(ctx context.Context) (<-chan components.Spec, error) {
+		c := make(chan components.Spec)
+
 		files, err := ioutil.ReadDir(componentsPath)
 		if err != nil {
 			return nil, err
@@ -62,7 +65,15 @@ func LoadLocalComponents(componentsPath string) ComponentsLoader {
 			}
 		}
 
-		return list, nil
+		//send to channel
+
+		go func() {
+			for _, comp := range list {
+				c <- comp
+			}
+		}()
+
+		return c, nil
 	}
 }
 

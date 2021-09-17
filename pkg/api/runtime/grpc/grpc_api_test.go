@@ -63,13 +63,12 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			return nil, errors.New("invalid topic")
 		}
 		return func() error {
-			delete(store, request.Topic)
+			//delete(store, request.Topic)
 			return nil
 		}, nil
 	}
 
-	srv := NewRusiServer(publishHandler, subscribeHandler)
-	startServer(srv, t)
+	startServer(t, publishHandler, subscribeHandler)
 	ctx := context.Background()
 	client, close := newClient(ctx, t)
 	defer close()
@@ -82,7 +81,6 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		wantMetadata     map[string]string
 		wantErr          bool
 	}{
-		// TODO: Add test cases.
 		{"test pubsub with one message",
 			&v1.PublishRequest{
 				PubsubName: "p1",
@@ -147,10 +145,15 @@ const bufSize = 1024 * 1024
 
 var lis *bufconn.Listener
 
-func startServer(server v1.RusiServer, t *testing.T) {
+func startServer(t *testing.T, publishHandler messaging.PublishRequestHandler,
+	subscribeHandler messaging.SubscribeRequestHandler) {
 	lis = bufconn.Listen(bufSize)
 	grpcServer := grpc.NewServer()
-	v1.RegisterRusiServer(grpcServer, server)
+	v1.RegisterRusiServer(grpcServer, &rusiServerImpl{
+		refresh:          make(chan bool),
+		publishHandler:   publishHandler,
+		subscribeHandler: subscribeHandler,
+	})
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {

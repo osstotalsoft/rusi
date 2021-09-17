@@ -3,130 +3,89 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
+	"reflect"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/custom-resource/components"
-	components_loader "rusi/pkg/custom-resource/components/loader"
-	components_middleware "rusi/pkg/custom-resource/components/middleware"
-	"rusi/pkg/custom-resource/components/pubsub"
 	"rusi/pkg/custom-resource/configuration"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"rusi/pkg/messaging"
 	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
-	"strings"
-
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 )
 
 type runtime struct {
-	config           Config
-	pubsubFactory    *pubsub.Factory
-	componentsLoader components_loader.ComponentsLoader
-	appConfig        configuration.Spec
-	components       []components.Spec
+	ctx   context.Context
+	appID string
+	api   runtime_api.Api
 
-	subscriptionMiddlewareRegistry components_middleware.Registry
+	appConfig         configuration.Spec
+	componentsManager *ComponentsManager
+
+	configurationUpdatesChan <-chan configuration.Spec
 }
 
-func NewRuntime(config Config,
-	componentsLoader components_loader.ComponentsLoader,
-	configurationLoader configuration_loader.ConfigurationLoader) *runtime {
+func NewRuntime(ctx context.Context, config Config, api runtime_api.Api,
+	configurationLoader configuration_loader.ConfigurationLoader,
+	manager *ComponentsManager) (*runtime, error) {
 
-	appConfig, err := configurationLoader(config.Config)
+	configChan, err := configurationLoader(ctx, config.Config)
 	if err != nil {
-		klog.ErrorS(err, "error loading application config", "name", config.Config, "mode", config.Mode)
-		return nil
+		klog.ErrorS(err, "error loading application config", "name",
+			config.Config, "mode", config.Mode)
+		return nil, err
 	}
 
-	return &runtime{
-		config:           config,
-		pubsubFactory:    pubsub.NewPubSubFactory(config.AppID),
-		componentsLoader: componentsLoader,
-		appConfig:        appConfig,
+	//block until config arrives
+	rt := &runtime{
+		api:   api,
+		ctx:   ctx,
+		appID: config.AppID,
 
-		subscriptionMiddlewareRegistry: components_middleware.NewRegistry(),
+		configurationUpdatesChan: configChan,
+		appConfig:                <-configChan,
+		componentsManager:        manager,
+	}
+
+	api.SetPublishHandler(rt.PublishHandler)
+	api.SetSubscribeHandler(rt.SubscribeHandler)
+
+	go rt.watchComponentsUpdates()
+	go rt.watchConfigurationUpdates()
+
+	return rt, nil
+}
+
+func (rt *runtime) watchConfigurationUpdates() {
+	for update := range rt.configurationUpdatesChan {
+		if reflect.DeepEqual(rt.appConfig, update) {
+			return
+		}
+		klog.V(4).InfoS("configuration changed",
+			"old config", rt.appConfig, "new config", update)
+		rt.appConfig = update
 	}
 }
 
-func (rt *runtime) Load(opts ...Option) error {
-	var runtimeOpts runtimeOpts
-	for _, opt := range opts {
-		opt(&runtimeOpts)
-	}
+func (rt *runtime) watchComponentsUpdates() {
+	for update := range rt.componentsManager.Watch() {
+		klog.V(4).InfoS("component changed", "operation", update.Operation,
+			"name", update.ComponentSpec.Name, "type", update.ComponentSpec.Type)
 
-	rt.pubsubFactory.Register(runtimeOpts.pubsubs...)
-	rt.subscriptionMiddlewareRegistry.Register(runtimeOpts.pubsubMiddleware...)
-
-	err := rt.initComponents()
-	if err != nil {
-		klog.Errorf("Error loading components %s", err.Error())
-		return err
-	}
-
-	klog.Infof("app id: %s", rt.config.AppID)
-
-	return nil
-}
-
-func (rt *runtime) initComponents() error {
-	comps, err := rt.componentsLoader()
-	if err != nil {
-		return err
-	}
-
-	for _, item := range comps {
-		err = rt.initComponent(item)
-		if err != nil {
-			return err
+		switch {
+		case update.ComponentCategory == components.PubsubComponent && update.Operation == components.Update:
+			err := rt.api.Refresh()
+			if err != nil {
+				klog.V(4).ErrorS(err, "error refreshing subscription")
+			}
 		}
 	}
-	rt.components = comps
-	return nil
-}
-
-func (rt *runtime) initComponent(spec components.Spec) error {
-
-	klog.InfoS("loading component", "name", spec.Name, "type", spec.Type, "version", spec.Version)
-	categ := extractComponentCategory(spec)
-	switch categ {
-	case components.BindingsComponent:
-		return nil
-	case components.PubsubComponent:
-		return rt.initPubSub(spec)
-	case components.SecretStoreComponent:
-		return nil
-	}
-	return nil
-}
-
-func (rt *runtime) initPubSub(spec components.Spec) error {
-	_, _, err := rt.pubsubFactory.Create(spec)
-	return err
-}
-
-func (rt *runtime) getComponent(componentType string, name string) (components.Spec, bool) {
-	for _, c := range rt.components {
-		if c.Type == componentType && c.Name == name {
-			return c, true
-		}
-	}
-	return components.Spec{}, false
 }
 
 func (rt *runtime) buildSubscriberPipeline() (pipeline messaging.Pipeline, err error) {
-
 	for _, middlewareSpec := range rt.appConfig.SubscriberPipelineSpec.Handlers {
-		component, exists := rt.getComponent(middlewareSpec.Type, middlewareSpec.Name)
-		if !exists {
-			return pipeline,
-				errors.Errorf("couldn't find middleware component with name %s and type %s/%s",
-					middlewareSpec.Name,
-					middlewareSpec.Type,
-					middlewareSpec.Version)
-		}
-		midlw, err := rt.subscriptionMiddlewareRegistry.Create(middlewareSpec.Type, middlewareSpec.Version,
-			component.Metadata)
+		midlw, err := rt.componentsManager.GetMiddleware(middlewareSpec)
 		if err != nil {
 			return pipeline, err
 		}
@@ -137,7 +96,7 @@ func (rt *runtime) buildSubscriberPipeline() (pipeline messaging.Pipeline, err e
 }
 
 func (rt *runtime) PublishHandler(ctx context.Context, request messaging.PublishRequest) error {
-	publisher := rt.pubsubFactory.GetPublisher(request.PubsubName)
+	publisher := rt.componentsManager.GetPublisher(request.PubsubName)
 	if publisher == nil {
 		return errors.New(fmt.Sprintf(runtime_api.ErrPubsubNotFound, request.PubsubName))
 	}
@@ -155,7 +114,7 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 }
 
 func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
-	subs := rt.pubsubFactory.GetSubscriber(request.PubsubName)
+	subs := rt.componentsManager.GetSubscriber(request.PubsubName)
 	if subs == nil {
 		err := errors.New(fmt.Sprintf("cannot find PubsubName named %s", request.PubsubName))
 		klog.ErrorS(err, err.Error())
@@ -170,11 +129,6 @@ func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.Subsc
 	return srv.StartSubscribing(request)
 }
 
-func extractComponentCategory(spec components.Spec) components.ComponentCategory {
-	for _, category := range components.ComponentCategories {
-		if strings.HasPrefix(spec.Type, fmt.Sprintf("%s.", category)) {
-			return category
-		}
-	}
-	return ""
+func (rt *runtime) Run() error {
+	return rt.api.Serve()
 }
