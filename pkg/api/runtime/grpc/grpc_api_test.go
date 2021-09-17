@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -47,28 +46,20 @@ func Test_grpc_to_messaging_subscriptionOptions(t *testing.T) {
 }
 
 func Test_RusiServer_Pubsub(t *testing.T) {
-
-	store := make(map[string]messaging.MessageEnvelope)
+	store := messaging.NewInMemoryBus()
 	publishHandler := func(ctx context.Context, request messaging.PublishRequest) error {
-		store[request.Topic] = messaging.MessageEnvelope{
+		return store.Publish(request.Topic, &messaging.MessageEnvelope{
 			Headers: request.Metadata,
 			Payload: request.Data,
-		}
-		return nil
+		})
 	}
 	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
-		if msg, ok := store[request.Topic]; ok {
-			request.Handler(context.Background(), &msg)
-		} else {
-			return nil, errors.New("invalid topic")
-		}
-		return func() error {
-			//delete(store, request.Topic)
-			return nil
-		}, nil
+		return store.Subscribe(request.Topic, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+			return request.Handler(ctx, msg)
+		}, nil)
 	}
 
-	startServer(t, publishHandler, subscribeHandler)
+	server := startServer(t, publishHandler, subscribeHandler)
 	ctx := context.Background()
 	client, close := newClient(ctx, t)
 	defer close()
@@ -85,7 +76,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.PublishRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-				Data:       []byte("\"data1\""),
+				Data:       []byte("\"data1\""), //json
 				Metadata:   nil,
 			},
 			&v1.SubscribeRequest{
@@ -97,7 +88,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.PublishRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-				Data:       []byte("\"data1\""),
+				Data:       []byte("\"data1\""), //json
 				Metadata:   map[string]string{"ip": "10"},
 			},
 			&v1.SubscribeRequest{
@@ -105,40 +96,51 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 				Topic:      "t1",
 			}, "data1", map[string]string{"ip": "10"}, false,
 		},
-		{"test pub on topic t1 and sub on t2",
-			&v1.PublishRequest{
-				PubsubName: "p1",
-				Topic:      "t1",
-				Data:       []byte(""),
-				Metadata:   nil,
-			},
-			&v1.SubscribeRequest{
-				PubsubName: "p1",
-				Topic:      "t2",
-			}, "", nil, true,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			_, err := client.Publish(ctx, tt.publishRequest)
+			stream, err := client.Subscribe(ctx, tt.subscribeRequest)
+			_, err = client.Publish(ctx, tt.publishRequest)
 			if err != nil && !tt.wantErr {
 				t.Errorf("Publish() error = %v", err)
 				return
 			}
-			stream, err := client.Subscribe(ctx, tt.subscribeRequest)
 			msg, err := stream.Recv() //blocks
-			if err != nil && !tt.wantErr {
-				t.Errorf("Subscribe() error = %v", err)
-				return
-			}
 			var data string
 			_ = serdes.Unmarshal(msg.GetData(), &data)
 			assert.Equal(t, tt.wantData, data)
 			assert.Equal(t, tt.wantMetadata, msg.GetMetadata())
 		})
 	}
+	t.Run("test subscribe context - cancel", func(t *testing.T) {
+		//TODO
+	})
+
+	t.Run("grpc server should refresh connection", func(t *testing.T) {
+		pubRequest := &v1.PublishRequest{
+			PubsubName: "p1",
+			Topic:      "t1",
+			Data:       []byte("\"data1\""),
+			Metadata:   map[string]string{"ip": "10"},
+		}
+		stream, err := client.Subscribe(ctx, &v1.SubscribeRequest{
+			PubsubName: "p1",
+			Topic:      "t1",
+		})
+		_, err = client.Publish(ctx, pubRequest)
+		assert.Nil(t, err)
+		msg, err := stream.Recv() //blocks
+		assert.NotNil(t, msg)
+		assert.Nil(t, err)
+		err = server.Refresh()
+		assert.Nil(t, err)
+		client.Publish(ctx, pubRequest)
+		msg, err = stream.Recv() //blocks
+		assert.NotNil(t, msg)
+		assert.Nil(t, err)
+	})
+
 }
 
 const bufSize = 1024 * 1024
@@ -146,20 +148,22 @@ const bufSize = 1024 * 1024
 var lis *bufconn.Listener
 
 func startServer(t *testing.T, publishHandler messaging.PublishRequestHandler,
-	subscribeHandler messaging.SubscribeRequestHandler) {
-	lis = bufconn.Listen(bufSize)
-	grpcServer := grpc.NewServer()
-	v1.RegisterRusiServer(grpcServer, &rusiServerImpl{
+	subscribeHandler messaging.SubscribeRequestHandler) *rusiServerImpl {
+	server := &rusiServerImpl{
 		refresh:          make(chan bool),
 		publishHandler:   publishHandler,
 		subscribeHandler: subscribeHandler,
-	})
+	}
+	lis = bufconn.Listen(bufSize)
+	grpcServer := grpc.NewServer()
+	v1.RegisterRusiServer(grpcServer, server)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			t.Fatalf("Server exited with error: %v", err)
 		}
 	}()
+	return server
 }
 func bufDialer(context.Context, string) (net.Conn, error) {
 	return lis.Dial()

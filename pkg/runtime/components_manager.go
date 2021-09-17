@@ -111,8 +111,8 @@ func (m *ComponentsManager) addOrUpdateComponent(spec components.Spec) (err erro
 
 func (m *ComponentsManager) updatePubSub(spec components.Spec) (err error) {
 	m.mux.RLock()
-	defer m.mux.RUnlock()
 	ps, ok := m.pubSubInstances[spec.Name]
+	m.mux.RUnlock()
 	if ok {
 		err = ps.Close()
 	}

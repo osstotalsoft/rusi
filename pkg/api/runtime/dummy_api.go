@@ -4,28 +4,30 @@ import (
 	"rusi/pkg/messaging"
 )
 
-type dummyApi struct {
-	publishRequestHandler   messaging.PublishRequestHandler
-	subscribeRequestHandler messaging.SubscribeRequestHandler
+type DummyApi struct {
+	PublishRequestHandler   messaging.PublishRequestHandler
+	SubscribeRequestHandler messaging.SubscribeRequestHandler
+	RefreshChan             chan bool
 }
 
-func NewDummyApi() *dummyApi {
-	return &dummyApi{}
+func NewDummyApi() *DummyApi {
+	return &DummyApi{RefreshChan: make(chan bool)}
 }
 
-func (dummyApi) Serve() error {
+func (DummyApi) Serve() error {
 	return nil
 }
 
-func (dummyApi) Refresh() error {
+func (d *DummyApi) Refresh() error {
+	d.RefreshChan <- true
 	return nil
 }
 
-func (d *dummyApi) SetPublishHandler(publishRequestHandler messaging.PublishRequestHandler) {
-	d.publishRequestHandler = publishRequestHandler
+func (d *DummyApi) SetPublishHandler(publishRequestHandler messaging.PublishRequestHandler) {
+	d.PublishRequestHandler = publishRequestHandler
 }
 
-func (d *dummyApi) SetSubscribeHandler(subscribeRequestHandler messaging.SubscribeRequestHandler) {
-	d.subscribeRequestHandler = subscribeRequestHandler
+func (d *DummyApi) SetSubscribeHandler(subscribeRequestHandler messaging.SubscribeRequestHandler) {
+	d.SubscribeRequestHandler = subscribeRequestHandler
 
 }

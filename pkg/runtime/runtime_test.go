@@ -182,46 +182,6 @@ func Test_runtime_PublishHandler(t *testing.T) {
 			},
 			"", "", "",
 		},
-		{
-			"runtime should ignore pubsub update if the spec si unchanged",
-			fields{
-				nil, nil,
-				func(channel chan configuration.Spec) {
-					channel <- configuration.Spec{}
-				},
-				func(channel chan components.Spec) {
-					channel <- components.Spec{
-						Name:     "p1",
-						Type:     "pubsub.natsstreaming",
-						Version:  "",
-						Metadata: map[string]string{},
-						Scopes:   nil,
-					}
-					//wait and change the same component
-					time.Sleep(time.Second)
-					channel <- components.Spec{
-						Name:     "p1",
-						Type:     "pubsub.natsstreaming",
-						Version:  "",
-						Metadata: map[string]string{"data": "data"},
-						Scopes:   nil,
-					}
-				},
-			},
-			args{
-				publishRequest: messaging.PublishRequest{
-					PubsubName: "p1",
-					Topic:      "t1",
-					Data:       "data1",
-					Metadata:   nil,
-				},
-				subscribeRequest: messaging.SubscribeRequest{
-					PubsubName: "p1",
-					Topic:      "t1",
-				},
-			},
-			"", "", "",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -268,4 +228,48 @@ func Test_runtime_PublishHandler(t *testing.T) {
 			assert.Equal(t, tt.args.publishRequest.Metadata, env.Headers)
 		})
 	}
+
+	t.Run("runtime should refresh on component change", func(t *testing.T) {
+		compChannel := make(chan components.Spec)
+		configChannel := make(chan configuration.Spec)
+		c1 := configLoader(configChannel, nil, func(channel chan configuration.Spec) {
+			channel <- configuration.Spec{}
+		})
+
+		c2 := compLoader(compChannel, nil, func(channel chan components.Spec) {
+			channel <- components.Spec{
+				Name:     "p1",
+				Type:     "pubsub.natsstreaming",
+				Version:  "",
+				Metadata: map[string]string{},
+				Scopes:   nil,
+			}
+			//wait
+			time.Sleep(1 * time.Second)
+			channel <- components.Spec{
+				Name:     "p1",
+				Type:     "pubsub.natsstreaming",
+				Version:  "",
+				Metadata: map[string]string{"data": "data"},
+				Scopes:   nil,
+			}
+		})
+
+		api := runtime_api.NewDummyApi()
+		manager, _ := NewComponentsManager(mainCtx, appId, c2, optionPubsub)
+		NewRuntime(mainCtx, Config{AppID: appId}, api, c1, manager)
+
+		newCtx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFunc()
+
+		//wait for components
+		time.Sleep(500 * time.Millisecond)
+
+		select {
+		case <-api.RefreshChan:
+		case <-newCtx.Done():
+			t.Errorf("Iohohohoo 5 seconds have passed and your test is not done")
+		}
+	})
+
 }
