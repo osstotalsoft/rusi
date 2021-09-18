@@ -55,6 +55,8 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 	}
 	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
 		return store.Subscribe(request.Topic, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+			//simulate some work
+			time.Sleep(500 * time.Millisecond)
 			return request.Handler(ctx, msg)
 		}, nil)
 	}
@@ -88,13 +90,13 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.PublishRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-				Data:       []byte("\"data1\""), //json
+				Data:       []byte("\"data2\""), //json
 				Metadata:   map[string]string{"ip": "10"},
 			},
 			&v1.SubscribeRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-			}, "data1", map[string]string{"ip": "10"}, false,
+			}, "data2", map[string]string{"ip": "10"}, false,
 		},
 	}
 
@@ -117,23 +119,28 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		//TODO
 	})
 
-	t.Run("grpc server should refresh connection", func(t *testing.T) {
+	t.Run("refresh subscriber and maintain grpc stream", func(t *testing.T) {
+		topic := "t4"
 		pubRequest := &v1.PublishRequest{
 			PubsubName: "p1",
-			Topic:      "t1",
+			Topic:      topic,
 			Data:       []byte("\"data1\""),
 			Metadata:   map[string]string{"ip": "10"},
 		}
 		stream, err := client.Subscribe(ctx, &v1.SubscribeRequest{
 			PubsubName: "p1",
-			Topic:      "t1",
+			Topic:      topic,
 		})
 		_, err = client.Publish(ctx, pubRequest)
 		assert.Nil(t, err)
 		msg, err := stream.Recv() //blocks
 		assert.NotNil(t, msg)
 		assert.Nil(t, err)
-		err = server.Refresh()
+		go server.Refresh()
+		//wait for refresh
+		err = waitFor(func() bool {
+			return store.GetSubscribersCount(topic) == 2
+		})
 		assert.Nil(t, err)
 		client.Publish(ctx, pubRequest)
 		msg, err = stream.Recv() //blocks
@@ -141,6 +148,37 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
+	t.Run("refresh subscriber when prev handler is not finished", func(t *testing.T) {
+		topic := "t5"
+		pubRequest := &v1.PublishRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+			Data:       []byte("\"data1\""),
+			Metadata:   map[string]string{"ip": "10"},
+		}
+		stream, err := client.Subscribe(ctx, &v1.SubscribeRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+		})
+		_, err = client.Publish(ctx, pubRequest)
+		assert.Nil(t, err)
+		go server.Refresh()
+		//wait for refresh
+		err = waitFor(func() bool {
+			return store.GetSubscribersCount(topic) == 2
+		})
+		assert.Nil(t, err)
+
+		//assert.Equal(t, 2, store.GetSubscribersCount(topic))
+		msg, err := stream.Recv() //blocks
+		assert.NotNil(t, msg)
+		assert.Nil(t, err)
+		_, err = client.Publish(ctx, pubRequest)
+		assert.Nil(t, err)
+		msg, err = stream.Recv() //blocks
+		assert.NotNil(t, msg)
+		assert.Nil(t, err)
+	})
 }
 
 const bufSize = 1024 * 1024
@@ -150,7 +188,7 @@ var lis *bufconn.Listener
 func startServer(t *testing.T, publishHandler messaging.PublishRequestHandler,
 	subscribeHandler messaging.SubscribeRequestHandler) *rusiServerImpl {
 	server := &rusiServerImpl{
-		refresh:          make(chan bool),
+		refreshChannels:  []chan bool{},
 		publishHandler:   publishHandler,
 		subscribeHandler: subscribeHandler,
 	}
@@ -168,7 +206,6 @@ func startServer(t *testing.T, publishHandler messaging.PublishRequestHandler,
 func bufDialer(context.Context, string) (net.Conn, error) {
 	return lis.Dial()
 }
-
 func newClient(ctx context.Context, t *testing.T) (v1.RusiClient, func()) {
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -177,4 +214,17 @@ func newClient(ctx context.Context, t *testing.T) (v1.RusiClient, func()) {
 	return v1.NewRusiClient(conn), func() {
 		conn.Close()
 	}
+}
+func waitFor(fun func() bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	for {
+		if fun() {
+			break
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+	}
+	return nil
 }

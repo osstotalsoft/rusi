@@ -7,7 +7,7 @@ import (
 
 type inMemoryBus struct {
 	handlers map[string][]Handler
-	mu       sync.Mutex
+	mu       sync.RWMutex
 }
 
 func NewInMemoryBus() *inMemoryBus {
@@ -15,14 +15,12 @@ func NewInMemoryBus() *inMemoryBus {
 }
 
 func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	h := c.handlers[topic]
-	go func() {
-		c.mu.Lock()
-		runHandlers(h, env)
-		defer c.mu.Unlock()
-	}()
+	go func(hh []Handler) {
+		runHandlers(hh, env)
+	}(h)
 	return nil
 }
 
@@ -41,6 +39,12 @@ func (*inMemoryBus) Init(properties map[string]string) error {
 
 func (*inMemoryBus) Close() error {
 	return nil
+}
+
+func (c *inMemoryBus) GetSubscribersCount(topic string) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.handlers[topic])
 }
 
 func runHandlers(handlers []Handler, env *MessageEnvelope) {

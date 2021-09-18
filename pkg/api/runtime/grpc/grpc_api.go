@@ -8,6 +8,7 @@ import (
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
+	"sync"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -19,9 +20,10 @@ import (
 func NewGrpcAPI(port string, serverOptions ...grpc.ServerOption) runtime.Api {
 
 	srv := &rusiServerImpl{
-		make(chan bool),
-		nil,
-		nil}
+		refreshChannels:  []chan bool{},
+		publishHandler:   nil,
+		subscribeHandler: nil,
+	}
 	return &grpcApi{port, srv, serverOptions}
 }
 
@@ -54,14 +56,28 @@ func (srv *grpcApi) Serve() error {
 }
 
 type rusiServerImpl struct {
-	refresh          chan bool
+	mu               sync.RWMutex
+	refreshChannels  []chan bool
 	publishHandler   messaging.PublishRequestHandler
 	subscribeHandler messaging.SubscribeRequestHandler
 }
 
 func (srv *rusiServerImpl) Refresh() error {
-	srv.refresh <- true
+	srv.mu.RLock()
+	defer srv.mu.RUnlock()
+	for _, channel := range srv.refreshChannels {
+		channel <- true
+	}
 	return nil
+}
+
+func (srv *rusiServerImpl) createRefreshChan() chan bool {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	c := make(chan bool)
+	srv.refreshChannels = append(srv.refreshChannels, c)
+	return c
 }
 
 // Subscribe creates a subscription
@@ -69,7 +85,7 @@ func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServ
 	ctx, cancel := context.WithCancel(subscribeServer.Context())
 	defer cancel()
 	exit := false
-
+	refreshChan := srv.createRefreshChan()
 	for {
 		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
 			PubsubName: request.GetPubsubName(),
@@ -95,7 +111,7 @@ func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServ
 		select {
 		case <-ctx.Done():
 			exit = true
-		case <-srv.refresh:
+		case <-refreshChan:
 			exit = false
 		}
 		err = unsub()
