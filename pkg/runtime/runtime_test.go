@@ -186,7 +186,7 @@ func Test_runtime_PublishHandler(t *testing.T) {
 
 			compChannel := make(chan components.Spec)
 			configChannel := make(chan configuration.Spec)
-			api := runtime_api.NewDummyApi()
+			api := runtime_api.NewTestApi()
 			manager, _ := NewComponentsManager(mainCtx, appId, compLoader(compChannel,
 				tt.fields.compErr, tt.fields.compStreamer), optionPubsub)
 			rt, err := NewRuntime(mainCtx, Config{AppID: appId}, api, configLoader(configChannel,
@@ -252,7 +252,7 @@ func Test_runtime_PublishHandler(t *testing.T) {
 			}
 		})
 
-		api := runtime_api.NewDummyApi()
+		api := runtime_api.NewTestApi()
 		manager, _ := NewComponentsManager(mainCtx, appId, c2, optionPubsub)
 		NewRuntime(mainCtx, Config{AppID: appId}, api, c1, manager)
 
