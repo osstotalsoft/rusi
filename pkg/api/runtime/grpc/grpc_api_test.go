@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"net"
 	"reflect"
 	"rusi/pkg/messaging"
@@ -84,7 +85,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.SubscribeRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-			}, "data1", map[string]string(nil), false,
+			}, "data1", map[string]string{"topic": "t1"}, false,
 		},
 		{"test pubsub with one message and headers",
 			&v1.PublishRequest{
@@ -96,7 +97,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			&v1.SubscribeRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
-			}, "data2", map[string]string{"ip": "10"}, false,
+			}, "data2", map[string]string{"ip": "10", "topic": "t1"}, false,
 		},
 	}
 
@@ -131,19 +132,25 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			PubsubName: "p1",
 			Topic:      topic,
 		})
+		//wait for subscribe
+		time.Sleep(10 * time.Millisecond)
 		_, err = client.Publish(ctx, pubRequest)
 		assert.Nil(t, err)
-		msg, err := stream.Recv() //blocks
-		assert.NotNil(t, msg)
+		err = wait(func() error {
+			msg, err := stream.Recv() //blocks
+			assert.NotNil(t, msg)
+			assert.Nil(t, err)
+			return err
+		}, "timeout waiting for receiving message on stream")
 		assert.Nil(t, err)
 		go server.Refresh()
 		//wait for refresh
-		err = waitFor(func() bool {
+		err = waitInLoop(func() bool {
 			return store.GetSubscribersCount(topic) == 2
 		})
 		assert.Nil(t, err)
 		client.Publish(ctx, pubRequest)
-		msg, err = stream.Recv() //blocks
+		msg, err := stream.Recv() //blocks
 		assert.NotNil(t, msg)
 		assert.Nil(t, err)
 	})
@@ -160,22 +167,27 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			PubsubName: "p1",
 			Topic:      topic,
 		})
+		//wait for subscribe
+		time.Sleep(10 * time.Millisecond)
 		_, err = client.Publish(ctx, pubRequest)
 		assert.Nil(t, err)
 		go server.Refresh()
 		//wait for refresh
-		err = waitFor(func() bool {
+		err = waitInLoop(func() bool {
 			return store.GetSubscribersCount(topic) == 2
 		})
 		assert.Nil(t, err)
 
-		//assert.Equal(t, 2, store.GetSubscribersCount(topic))
-		msg, err := stream.Recv() //blocks
-		assert.NotNil(t, msg)
+		err = wait(func() error {
+			msg, err := stream.Recv() //blocks
+			assert.NotNil(t, msg)
+			assert.Nil(t, err)
+			return err
+		}, "timeout waiting for receiving message on stream")
 		assert.Nil(t, err)
 		_, err = client.Publish(ctx, pubRequest)
 		assert.Nil(t, err)
-		msg, err = stream.Recv() //blocks
+		msg, err := stream.Recv() //blocks
 		assert.NotNil(t, msg)
 		assert.Nil(t, err)
 	})
@@ -215,8 +227,8 @@ func newClient(ctx context.Context, t *testing.T) (v1.RusiClient, func()) {
 		conn.Close()
 	}
 }
-func waitFor(fun func() bool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+func waitInLoop(fun func() bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	for {
 		if fun() {
@@ -227,4 +239,18 @@ func waitFor(fun func() bool) error {
 		}
 	}
 	return nil
+}
+
+func wait(fun func() error, msg string) error {
+	c := make(chan error)
+	go func() {
+		c <- fun()
+	}()
+
+	select {
+	case <-time.After(10 * time.Second):
+		return errors.New(msg)
+	case e := <-c:
+		return e
+	}
 }

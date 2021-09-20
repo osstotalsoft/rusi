@@ -138,7 +138,6 @@ func Test_runtime_PublishHandler(t *testing.T) {
 					PubsubName: "p1",
 					Topic:      "t1",
 					Data:       "data1",
-					Metadata:   nil,
 				},
 				subscribeRequest: messaging.SubscribeRequest{
 					PubsubName: "p1",
@@ -169,7 +168,6 @@ func Test_runtime_PublishHandler(t *testing.T) {
 					PubsubName: "p1",
 					Topic:      "t1",
 					Data:       "data1",
-					Metadata:   nil,
 				},
 				subscribeRequest: messaging.SubscribeRequest{
 					PubsubName: "p1",
@@ -225,7 +223,6 @@ func Test_runtime_PublishHandler(t *testing.T) {
 			assert.NoError(t, err)
 			env := <-subsChan
 			assert.Equal(t, tt.args.publishRequest.Data, env.Payload)
-			assert.Equal(t, tt.args.publishRequest.Metadata, env.Headers)
 		})
 	}
 
