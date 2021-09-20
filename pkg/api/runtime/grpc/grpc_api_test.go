@@ -49,13 +49,13 @@ func Test_grpc_to_messaging_subscriptionOptions(t *testing.T) {
 func Test_RusiServer_Pubsub(t *testing.T) {
 	store := messaging.NewInMemoryBus()
 	publishHandler := func(ctx context.Context, request messaging.PublishRequest) error {
-		return store.Publish(request.Topic, &messaging.MessageEnvelope{
+		return store.Publish(request.Topic, messaging.MessageEnvelope{
 			Headers: request.Metadata,
 			Payload: request.Data,
 		})
 	}
 	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
-		return store.Subscribe(request.Topic, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+		return store.Subscribe(request.Topic, func(ctx context.Context, msg messaging.MessageEnvelope) error {
 			//simulate some work
 			time.Sleep(500 * time.Millisecond)
 			return request.Handler(ctx, msg)

@@ -103,7 +103,7 @@ func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServ
 		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
 			PubsubName: request.GetPubsubName(),
 			Topic:      request.GetTopic(),
-			Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
+			Handler: func(_ context.Context, env messaging.MessageEnvelope) error {
 				data, err := serdes.Marshal(env.Payload)
 				if err != nil {
 					return err

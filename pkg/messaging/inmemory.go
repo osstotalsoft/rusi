@@ -15,7 +15,7 @@ func NewInMemoryBus() *inMemoryBus {
 	return &inMemoryBus{handlers: map[string][]Handler{}}
 }
 
-func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
+func (c *inMemoryBus) Publish(topic string, env MessageEnvelope) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	h := c.handlers[topic]
@@ -60,7 +60,7 @@ func (c *inMemoryBus) GetSubscribersCount(topic string) int {
 	return len(c.handlers[topic])
 }
 
-func runHandlers(handlers []Handler, env *MessageEnvelope) {
+func runHandlers(handlers []Handler, env MessageEnvelope) {
 	ctx := context.Background()
 	for i, h := range handlers {
 		println(fmt.Sprintf("runHandler %d with metadata %v", i, env.Headers))

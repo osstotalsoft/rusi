@@ -21,7 +21,7 @@ func RegisterComponentFactories() (result []runtime.Option) {
 		runtime.WithPubsubMiddleware(
 			middleware.New("uppercase", func(properties map[string]string) messaging.Middleware {
 				return func(next messaging.Handler) messaging.Handler {
-					return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+					return func(ctx context.Context, msg messaging.MessageEnvelope) error {
 						klog.V(4).InfoS("uppercase middleware hit")
 						return next(ctx, msg)
 					}
