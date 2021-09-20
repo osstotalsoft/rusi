@@ -24,9 +24,9 @@ func Test_runtime_PublishHandler(t *testing.T) {
 		}),
 	)
 
-	subRequestWrap := func(channel chan messaging.MessageEnvelope, request messaging.SubscribeRequest) messaging.SubscribeRequest {
+	subRequestWrap := func(channel chan *messaging.MessageEnvelope, request messaging.SubscribeRequest) messaging.SubscribeRequest {
 		h := request.Handler
-		request.Handler = func(ctx context.Context, msg messaging.MessageEnvelope) error {
+		request.Handler = func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 			channel <- msg
 			if h != nil {
 				return h(ctx, msg)
@@ -172,7 +172,7 @@ func Test_runtime_PublishHandler(t *testing.T) {
 				subscribeRequest: messaging.SubscribeRequest{
 					PubsubName: "p1",
 					Topic:      "t1",
-					Handler: func(ctx context.Context, msg messaging.MessageEnvelope) error {
+					Handler: func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 						return errors.New("subscribe error")
 					},
 					Options: nil,
@@ -186,7 +186,7 @@ func Test_runtime_PublishHandler(t *testing.T) {
 
 			compChannel := make(chan components.Spec)
 			configChannel := make(chan configuration.Spec)
-			api := runtime_api.NewTestApi()
+			api := runtime_api.NewDummyApi()
 			manager, _ := NewComponentsManager(mainCtx, appId, compLoader(compChannel,
 				tt.fields.compErr, tt.fields.compStreamer), optionPubsub)
 			rt, err := NewRuntime(mainCtx, Config{AppID: appId}, api, configLoader(configChannel,
@@ -204,7 +204,7 @@ func Test_runtime_PublishHandler(t *testing.T) {
 			//wait for components
 			time.Sleep(500 * time.Millisecond)
 
-			subsChan := make(chan messaging.MessageEnvelope)
+			subsChan := make(chan *messaging.MessageEnvelope)
 			unsub, err := rt.SubscribeHandler(newCtx, subRequestWrap(subsChan, tt.args.subscribeRequest))
 			if tt.subscribeErr != "" {
 				assert.EqualError(t, err, tt.subscribeErr)
@@ -252,7 +252,7 @@ func Test_runtime_PublishHandler(t *testing.T) {
 			}
 		})
 
-		api := runtime_api.NewTestApi()
+		api := runtime_api.NewDummyApi()
 		manager, _ := NewComponentsManager(mainCtx, appId, c2, optionPubsub)
 		NewRuntime(mainCtx, Config{AppID: appId}, api, c1, manager)
 

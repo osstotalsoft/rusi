@@ -23,7 +23,7 @@ func (srv *subscriberService) StartSubscribing(request messaging.SubscribeReques
 	srv.pipeline.UseMiddleware(middleware.SubscriberTracingMiddleware())
 	pipe := srv.pipeline.Build(request.Handler)
 
-	return srv.subscriber.Subscribe(request.Topic, func(ctx context.Context, env messaging.MessageEnvelope) error {
+	return srv.subscriber.Subscribe(request.Topic, func(ctx context.Context, env *messaging.MessageEnvelope) error {
 		klog.InfoS("message received on", "topic", request.Topic,
 			"payload", env.Payload, "headers", env.Headers)
 

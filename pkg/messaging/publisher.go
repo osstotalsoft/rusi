@@ -1,5 +1,5 @@
 package messaging
 
 type Publisher interface {
-	Publish(topic string, env MessageEnvelope) error
+	Publish(topic string, env *MessageEnvelope) error
 }

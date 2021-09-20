@@ -15,7 +15,7 @@ type MessageEnvelope struct {
 }
 
 type UnsubscribeFunc func() error
-type Handler func(ctx context.Context, msg MessageEnvelope) error
+type Handler func(ctx context.Context, msg *MessageEnvelope) error
 
 type PublishRequest struct {
 	PubsubName string

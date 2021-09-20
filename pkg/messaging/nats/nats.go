@@ -188,7 +188,7 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 	return nil
 }
 
-func (n *natsStreamingPubSub) Publish(topic string, msg messaging.MessageEnvelope) error {
+func (n *natsStreamingPubSub) Publish(topic string, msg *messaging.MessageEnvelope) error {
 
 	msgBytes, err := serdes.Marshal(msg)
 	if err != nil {
@@ -200,7 +200,7 @@ func (n *natsStreamingPubSub) Publish(topic string, msg messaging.MessageEnvelop
 	if err != nil {
 		return fmt.Errorf("nats-streaming: error from publish: %s", err)
 	}
-	klog.V(4).InfoS("Published message to NATS", "topic", topic, "message", msg)
+	klog.V(4).InfoS("Published message to NATS", "topic", topic, "message", *msg)
 	return nil
 }
 
@@ -224,7 +224,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 			klog.ErrorS(err, "Error unmarshaling message")
 		}
 
-		err = handler(context.Background(), msg)
+		err = handler(context.Background(), &msg)
 		if err == nil {
 			// we only send a successful ACK if there is no error from Dapr runtime
 			natsMsg.Ack()

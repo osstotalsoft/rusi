@@ -17,7 +17,7 @@ func PublisherTracingMiddleware() messaging.Middleware {
 	tr := otel.Tracer("tracing-middleware")
 
 	return func(next messaging.Handler) messaging.Handler {
-		return func(ctx context.Context, msg messaging.MessageEnvelope) error {
+		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 			bags, spanCtx := Extract(ctx, msg.Headers)
 			ctx = baggage.ContextWithBaggage(ctx, bags)
 			topic := ctx.Value(messaging.TopicKey).(string)
@@ -44,7 +44,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 	tr := otel.Tracer("tracing-middleware")
 
 	return func(next messaging.Handler) messaging.Handler {
-		return func(ctx context.Context, msg messaging.MessageEnvelope) error {
+		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 
 			bags, spanCtx := Extract(ctx, msg.Headers)
 			ctx = baggage.ContextWithBaggage(ctx, bags)
@@ -62,7 +62,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 
 			span.AddEvent("new message received",
 				trace.WithAttributes(attribute.String("headers", fmt.Sprintf("%v", msg.Headers))))
-			span.SetAttributes(attribute.Key("message").String(fmt.Sprintf("%v", msg)))
+			span.SetAttributes(attribute.Key("message").String(fmt.Sprintf("%v", *msg)))
 
 			Inject(ctx, msg.Headers)
 
