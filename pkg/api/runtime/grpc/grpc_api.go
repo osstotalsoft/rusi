@@ -80,6 +80,19 @@ func (srv *rusiServerImpl) createRefreshChan() chan bool {
 	return c
 }
 
+func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+
+	var s []chan bool
+	for _, channel := range srv.refreshChannels {
+		if channel != refreshChan {
+			s = append(s, channel)
+		}
+	}
+	srv.refreshChannels = s
+}
+
 // Subscribe creates a subscription
 func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Rusi_SubscribeServer) error {
 	ctx, cancel := context.WithCancel(subscribeServer.Context())
@@ -119,6 +132,7 @@ func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServ
 			return err
 		}
 		if exit {
+			srv.removeRefreshChan(refreshChan)
 			return ctx.Err()
 		}
 	}

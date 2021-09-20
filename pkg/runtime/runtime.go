@@ -65,6 +65,10 @@ func (rt *runtime) watchConfigurationUpdates() {
 		klog.V(4).InfoS("configuration changed",
 			"old config", rt.appConfig, "new config", update)
 		rt.appConfig = update
+		err := rt.api.Refresh()
+		if err != nil {
+			klog.V(4).ErrorS(err, "error refreshing subscription")
+		}
 	}
 }
 

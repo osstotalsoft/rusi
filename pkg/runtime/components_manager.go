@@ -78,7 +78,6 @@ func (m *ComponentsManager) addOrUpdateComponent(spec components.Spec) (err erro
 	if exists && reflect.DeepEqual(oldComp.Metadata, spec.Metadata) {
 		return
 	}
-
 	if exists {
 		operation = components.Update
 		msg = "updating component"

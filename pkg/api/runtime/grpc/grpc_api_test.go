@@ -118,10 +118,6 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			assert.Equal(t, tt.wantMetadata, msg.GetMetadata())
 		})
 	}
-	t.Run("test subscribe context - cancel", func(t *testing.T) {
-		//TODO
-	})
-
 	t.Run("refresh subscriber and maintain grpc stream", func(t *testing.T) {
 		topic := "t4"
 		pubRequest := &v1.PublishRequest{
@@ -193,6 +189,46 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		assert.NotNil(t, msg)
 		assert.Nil(t, err)
 	})
+
+	t.Run("close subscription, resubscribe then refresh", func(t *testing.T) {
+		topic := "t6"
+		ctx2, cancelFunc := context.WithCancel(ctx)
+		subRequest := &v1.SubscribeRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+		}
+		pubRequest := &v1.PublishRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+			Data:       []byte("\"data1\""),
+			Metadata:   map[string]string{"ip": "10"},
+		}
+		stream, err := client.Subscribe(ctx2, subRequest)
+		//wait for subscribe
+		time.Sleep(100 * time.Millisecond)
+		cancelFunc()
+		stream, err = client.Subscribe(ctx, subRequest)
+		//wait for subscribe
+		time.Sleep(100 * time.Millisecond)
+		assert.Nil(t, err)
+		_, err = client.Publish(ctx, pubRequest)
+		assert.Nil(t, err)
+		server.Refresh()
+		//wait for refresh
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 3
+		})
+		assert.Nil(t, err)
+
+		err = wait(func() error {
+			msg, err := stream.Recv() //blocks
+			assert.NotNil(t, msg)
+			assert.Nil(t, err)
+			return err
+		}, "timeout waiting for receiving message on stream")
+		assert.Nil(t, err)
+
+	})
 }
 
 const bufSize = 1024 * 1024
@@ -242,7 +278,6 @@ func waitInLoop(fun func() bool) error {
 	}
 	return nil
 }
-
 func wait(fun func() error, msg string) error {
 	c := make(chan error)
 	go func() {

@@ -16,10 +16,14 @@ func WatchConfig(mainCtx context.Context, configChan <-chan configuration.Spec,
 	environment, serviceName string) {
 
 	var (
-		err error
-		tp  *tracesdk.TracerProvider
+		err                  error
+		prevEndpointAddresss string
+		tp                   *tracesdk.TracerProvider
 	)
 	for cfg := range configChan {
+		if prevEndpointAddresss == cfg.TracingSpec.Zipkin.EndpointAddresss {
+			continue
+		}
 		if tp != nil {
 			//flush prev logs
 			FlushTracer(tp)(mainCtx)
@@ -30,6 +34,7 @@ func WatchConfig(mainCtx context.Context, configChan <-chan configuration.Spec,
 				klog.Fatal(err)
 			}
 		}
+		prevEndpointAddresss = cfg.TracingSpec.Zipkin.EndpointAddresss
 	}
 	if tp != nil {
 		//flush prev logs
