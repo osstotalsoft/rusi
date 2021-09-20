@@ -104,6 +104,8 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			stream, err := client.Subscribe(ctx, tt.subscribeRequest)
+			//wait for subscribe
+			time.Sleep(100 * time.Millisecond)
 			_, err = client.Publish(ctx, tt.publishRequest)
 			if err != nil && !tt.wantErr {
 				t.Errorf("Publish() error = %v", err)
@@ -133,7 +135,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			Topic:      topic,
 		})
 		//wait for subscribe
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		_, err = client.Publish(ctx, pubRequest)
 		assert.Nil(t, err)
 		err = wait(func() error {
@@ -168,7 +170,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			Topic:      topic,
 		})
 		//wait for subscribe
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		_, err = client.Publish(ctx, pubRequest)
 		assert.Nil(t, err)
 		go server.Refresh()

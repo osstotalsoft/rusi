@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"k8s.io/klog/v2"
+	"rusi/internal/tracing"
 	grpc_api "rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
@@ -36,20 +37,13 @@ func main() {
 		configLoader = operator.GetConfiguration
 	}
 
-	//dynamicConfig, err := configLoader(mainCtx, cfg.Config)
-	//if err != nil {
-	//	klog.Fatal(err)
-	//}
-	//
-	//if dynamicConfig.TracingSpec.Zipkin.EndpointAddresss != "" {
-	//	tp, err := tracing.JaegerTracerProvider(dynamicConfig.TracingSpec.Zipkin.EndpointAddresss,
-	//		"dev", cfg.AppID)
-	//	if err != nil {
-	//		klog.Fatal(err)
-	//	}
-	//	tracing.SetTracing(tp, jaeger.Jaeger{})
-	//	defer tracing.FlushTracer(tp)(mainCtx)
-	//}
+	configChan, err := configLoader(mainCtx, cfg.Config)
+	if err != nil {
+		klog.Fatal(err)
+	}
+
+	//setup tracing
+	go tracing.WatchConfig(mainCtx, configChan, tracing.SetJaegerTracing, "dev", cfg.AppID)
 
 	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,
 		RegisterComponentFactories()...)
