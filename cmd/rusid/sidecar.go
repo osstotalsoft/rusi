@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"k8s.io/klog/v2"
 	"rusi/internal/tracing"
 	grpc_api "rusi/pkg/api/runtime/grpc"
@@ -16,6 +15,8 @@ import (
 )
 
 func main() {
+	mainCtx := context.Background()
+
 	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
 	kube.InitFlags(nil)
@@ -36,36 +37,32 @@ func main() {
 		configLoader = operator.GetConfiguration
 	}
 
-	dynamicConfig, err := configLoader(cfg.Config)
+	configChan, err := configLoader(mainCtx, cfg.Config)
 	if err != nil {
 		klog.Fatal(err)
 	}
 
-	if dynamicConfig.TracingSpec.Zipkin.EndpointAddresss != "" {
-		tp, err := tracing.JaegerTracerProvider(dynamicConfig.TracingSpec.Zipkin.EndpointAddresss,
-			"dev", cfg.AppID)
-		if err != nil {
-			klog.Fatal(err)
-		}
-		tracing.SetTracing(tp, jaeger.Jaeger{})
-		defer tracing.FlushTracer(tp)(context.Background())
-	}
+	//setup tracing
+	go tracing.WatchConfig(mainCtx, configChan, tracing.SetJaegerTracing, "dev", cfg.AppID)
 
-	rt := runtime.NewRuntime(cfg, compLoader, configLoader)
-	if rt == nil {
+	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,
+		RegisterComponentFactories()...)
+	if err != nil {
+		klog.Error(err)
 		return
 	}
-	rusiGrpcServer := grpc_api.NewRusiServer(rt.PublishHandler, rt.SubscribeHandler)
-	api := grpc_api.NewGrpcAPI(rusiGrpcServer, cfg.RusiGRPCPort)
-	err = rt.Load(RegisterComponentFactories()...)
+	api := grpc_api.NewGrpcAPI(cfg.RusiGRPCPort)
+	rt, err := runtime.NewRuntime(mainCtx, cfg, api, configLoader, compManager)
 	if err != nil {
 		klog.Error(err)
 		return
 	}
 
-	klog.Infof("Rusid is starting on port %s", cfg.RusiGRPCPort)
-	klog.Infof("Rusid selected mode %s", cfg.Mode)
-	err = api.Serve()
+	klog.InfoS("Rusid is starting", "port", cfg.RusiGRPCPort,
+		"app id", cfg.AppID, "mode", cfg.Mode)
+	klog.InfoS("Rusid is using", "config", cfg)
+
+	err = rt.Run()
 	if err != nil {
 		klog.Error(err)
 	}

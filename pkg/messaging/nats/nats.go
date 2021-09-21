@@ -204,7 +204,7 @@ func (n *natsStreamingPubSub) Publish(topic string, msg *messaging.MessageEnvelo
 	return nil
 }
 
-func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler, options *messaging.SubscriptionOptions) (messaging.UnsubscribeFunc, error) {
+func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler, options *messaging.SubscriptionOptions) (messaging.CloseFunc, error) {
 	mergedOptions, err := mergeGlobalAndSubscriptionOptions(n.options, options)
 	if err != nil {
 		return nil, fmt.Errorf("nats-streaming: error getting subscription options %s", err)
@@ -248,7 +248,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 		klog.Infof("nats: subscribed to subject %s with queue group %s", topic, mergedOptions.natsQueueGroupName)
 	}
 
-	return subs.Unsubscribe, nil
+	return subs.Close, nil
 }
 
 func stanSubscriptionOptions(opts options) ([]stan.SubscriptionOption, error) {
@@ -309,7 +309,6 @@ func genRandomString(n int) string {
 
 func (n *natsStreamingPubSub) Close() error {
 	n.cancel()
-
 	return n.natStreamingConn.Close()
 }
 

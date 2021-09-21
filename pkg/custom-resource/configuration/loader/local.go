@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"context"
 	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -24,17 +25,18 @@ func LoadDefaultConfiguration() configuration.Spec {
 }
 
 // LoadStandaloneConfiguration gets the path to a config file and loads it into a configuration.
-func LoadStandaloneConfiguration(config string) (configuration.Spec, error) {
+func LoadStandaloneConfiguration(ctx context.Context, config string) (<-chan configuration.Spec, error) {
 	spec := LoadDefaultConfiguration()
+	c := make(chan configuration.Spec)
 
 	_, err := os.Stat(config)
 	if err != nil {
-		return spec, err
+		return c, err
 	}
 
 	b, err := ioutil.ReadFile(config)
 	if err != nil {
-		return spec, err
+		return c, err
 	}
 
 	// Parse environment variables from yaml
@@ -42,5 +44,10 @@ func LoadStandaloneConfiguration(config string) (configuration.Spec, error) {
 
 	cfg := configuration.Configuration{Spec: spec}
 	err = yaml.Unmarshal(b, &cfg)
-	return cfg.Spec, err
+
+	go func() {
+		c <- cfg.Spec
+	}()
+
+	return c, err
 }

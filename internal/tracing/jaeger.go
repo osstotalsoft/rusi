@@ -1,8 +1,9 @@
 package tracing
 
 import (
+	jaeger_propagators "go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	jaeger_exporters "go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
@@ -14,7 +15,7 @@ import (
 // about the application.
 func JaegerTracerProvider(url, environment, serviceName string) (*tracesdk.TracerProvider, error) {
 	// Create the Jaeger exporter
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
+	exp, err := jaeger_exporters.New(jaeger_exporters.WithCollectorEndpoint(jaeger_exporters.WithEndpoint(url)))
 	if err != nil {
 		return nil, err
 	}
@@ -29,5 +30,14 @@ func JaegerTracerProvider(url, environment, serviceName string) (*tracesdk.Trace
 			//attribute.Int64("ID", id),
 		)),
 	)
+	return tp, nil
+}
+
+func SetJaegerTracing(url, environment, serviceName string) (*tracesdk.TracerProvider, error) {
+	tp, err := JaegerTracerProvider(url, environment, serviceName)
+	if err != nil {
+		return nil, err
+	}
+	SetTracing(tp, jaeger_propagators.Jaeger{})
 	return tp, nil
 }

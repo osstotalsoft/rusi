@@ -5,12 +5,16 @@ import (
 	"time"
 )
 
+const (
+	TopicKey = "topic"
+)
+
 type MessageEnvelope struct {
 	Headers map[string]string `json:"headers"`
 	Payload interface{}       `json:"payload"`
 }
 
-type UnsubscribeFunc func() error
+type CloseFunc func() error
 type Handler func(ctx context.Context, msg *MessageEnvelope) error
 
 type PublishRequest struct {
@@ -35,6 +39,5 @@ type SubscriptionOptions struct {
 	AckWaitTime            *time.Duration
 }
 
-const (
-	TopicKey = "topic"
-)
+type PublishRequestHandler func(ctx context.Context, request PublishRequest) error
+type SubscribeRequestHandler func(ctx context.Context, request SubscribeRequest) (CloseFunc, error)

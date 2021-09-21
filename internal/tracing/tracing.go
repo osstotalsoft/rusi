@@ -7,8 +7,40 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/klog/v2"
+	"rusi/pkg/custom-resource/configuration"
 	"time"
 )
+
+func WatchConfig(mainCtx context.Context, configChan <-chan configuration.Spec,
+	tracerFunc func(url, environment, serviceName string) (*tracesdk.TracerProvider, error),
+	environment, serviceName string) {
+
+	var (
+		err                  error
+		prevEndpointAddresss string
+		tp                   *tracesdk.TracerProvider
+	)
+	for cfg := range configChan {
+		if prevEndpointAddresss == cfg.TracingSpec.Zipkin.EndpointAddresss {
+			continue
+		}
+		if tp != nil {
+			//flush prev logs
+			FlushTracer(tp)(mainCtx)
+		}
+		if cfg.TracingSpec.Zipkin.EndpointAddresss != "" {
+			tp, err = tracerFunc(cfg.TracingSpec.Zipkin.EndpointAddresss, environment, serviceName)
+			if err != nil {
+				klog.Fatal(err)
+			}
+		}
+		prevEndpointAddresss = cfg.TracingSpec.Zipkin.EndpointAddresss
+	}
+	if tp != nil {
+		//flush prev logs
+		FlushTracer(tp)(mainCtx)
+	}
+}
 
 func SetTracing(tp trace.TracerProvider, propagator propagation.TextMapPropagator) {
 	// Register our TracerProvider as the global so any imported
