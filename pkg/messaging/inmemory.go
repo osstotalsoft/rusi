@@ -34,7 +34,7 @@ func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
 	return nil
 }
 
-func (c *inMemoryBus) Subscribe(topic string, handler Handler, options *SubscriptionOptions) (UnsubscribeFunc, error) {
+func (c *inMemoryBus) Subscribe(topic string, handler Handler, options *SubscriptionOptions) (CloseFunc, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handlers[topic] = append(c.handlers[topic], handler)

@@ -117,7 +117,7 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 	})(ctx, env)
 }
 
-func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
+func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.SubscribeRequest) (messaging.CloseFunc, error) {
 	subs := rt.componentsManager.GetSubscriber(request.PubsubName)
 	if subs == nil {
 		err := errors.New(fmt.Sprintf("cannot find PubsubName named %s", request.PubsubName))

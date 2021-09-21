@@ -54,7 +54,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			Payload: request.Data,
 		})
 	}
-	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
+	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.CloseFunc, error) {
 		return store.Subscribe(request.Topic, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 			//simulate some work
 			time.Sleep(500 * time.Millisecond)

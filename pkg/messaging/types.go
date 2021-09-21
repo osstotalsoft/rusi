@@ -14,7 +14,7 @@ type MessageEnvelope struct {
 	Payload interface{}       `json:"payload"`
 }
 
-type UnsubscribeFunc func() error
+type CloseFunc func() error
 type Handler func(ctx context.Context, msg *MessageEnvelope) error
 
 type PublishRequest struct {
@@ -40,4 +40,4 @@ type SubscriptionOptions struct {
 }
 
 type PublishRequestHandler func(ctx context.Context, request PublishRequest) error
-type SubscribeRequestHandler func(ctx context.Context, request SubscribeRequest) (UnsubscribeFunc, error)
+type SubscribeRequestHandler func(ctx context.Context, request SubscribeRequest) (CloseFunc, error)

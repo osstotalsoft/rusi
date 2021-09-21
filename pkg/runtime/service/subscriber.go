@@ -17,7 +17,7 @@ func NewSubscriberService(subscriber messaging.Subscriber, pipeline messaging.Pi
 	return &subscriberService{subscriber, pipeline}
 }
 
-func (srv *subscriberService) StartSubscribing(request messaging.SubscribeRequest) (messaging.UnsubscribeFunc, error) {
+func (srv *subscriberService) StartSubscribing(request messaging.SubscribeRequest) (messaging.CloseFunc, error) {
 
 	//insert tracing by default
 	srv.pipeline.UseMiddleware(middleware.SubscriberTracingMiddleware())
