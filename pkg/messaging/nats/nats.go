@@ -12,7 +12,6 @@ import (
 
 	"k8s.io/klog/v2"
 
-	nats "github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
 	"github.com/nats-io/stan.go/pb"
 )
@@ -171,12 +170,12 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 	}
 	n.options = m
 	clientID := genRandomString(20)
-	opts := []nats.Option{nats.Name(clientID)}
-	natsConn, err := nats.Connect(m.natsURL, opts...)
-	if err != nil {
-		return fmt.Errorf("nats-streaming: error connecting to nats server at %s: %s", m.natsURL, err)
-	}
-	natStreamingConn, err := stan.Connect(m.natsStreamingClusterID, clientID, stan.NatsConn(natsConn))
+
+	natStreamingConn, err := stan.Connect(m.natsStreamingClusterID, clientID, stan.NatsURL(m.natsURL),
+		stan.SetConnectionLostHandler(func(conn stan.Conn, err error) {
+			klog.ErrorS(err, "connection lost")
+		}))
+
 	if err != nil {
 		return fmt.Errorf("nats-streaming: error connecting to nats streaming server %s: %s", m.natsStreamingClusterID, err)
 	}
