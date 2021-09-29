@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"rusi/pkg/api/runtime"
@@ -94,26 +95,28 @@ func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
 }
 
 // Subscribe creates a subscription
-func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Rusi_SubscribeServer) error {
+func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) error {
+	//block until subscriptionRequest is received
+	r, err := subscribeServer.Recv()
+	if err != nil {
+		return err
+	}
+	request := r.GetSubscriptionRequest()
+	if request == nil {
+		return errors.New("invalid subscription request")
+	}
+
 	ctx, cancel := context.WithCancel(subscribeServer.Context())
 	defer cancel()
 	exit := false
 	refreshChan := srv.createRefreshChan()
+	handler := srv.buildSubscribeHandler(subscribeServer)
 	for {
 		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
 			PubsubName: request.GetPubsubName(),
 			Topic:      request.GetTopic(),
-			Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
-				data, err := serdes.Marshal(env.Payload)
-				if err != nil {
-					return err
-				}
-				return subscribeServer.Send(&v1.ReceivedMessage{
-					Data:     data,
-					Metadata: env.Headers,
-				})
-			},
-			Options: messagingSubscriptionOptions(request.GetOptions()),
+			Handler:    handler,
+			Options:    messagingSubscriptionOptions(request.GetOptions()),
 		})
 
 		if err != nil {
@@ -135,6 +138,82 @@ func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServ
 			srv.removeRefreshChan(refreshChan)
 			return ctx.Err()
 		}
+	}
+}
+
+func (srv *rusiServerImpl) buildSubscribeHandler(subscribeServer v1.Rusi_SubscribeServer) messaging.Handler {
+
+	type ackResponse struct {
+		request *v1.AckRequest
+		error   error
+	}
+
+	//wait for ack from the client
+	waitAcks := map[string]chan ackResponse{}
+	mu := sync.RWMutex{}
+	go func() {
+		r, err := subscribeServer.Recv()
+		mu.RLock()
+		if err != nil {
+			for _, channel := range waitAcks {
+				channel <- ackResponse{error: err}
+			}
+			return
+		}
+		for id, channel := range waitAcks {
+			if id == r.GetAckRequest().GetMessageId() {
+				channel <- ackResponse{request: r.GetAckRequest()}
+				break
+			}
+		}
+		mu.RUnlock()
+		mu.Lock()
+		delete(waitAcks, r.GetAckRequest().GetMessageId())
+		mu.Unlock()
+	}()
+
+	return func(ctx context.Context, env *messaging.MessageEnvelope) error {
+		if env.Id == "" {
+			return errors.New("message id is missing")
+		}
+		mu.Lock()
+		waitAckChan := make(chan ackResponse)
+		waitAcks[env.Id] = waitAckChan
+		mu.Unlock()
+
+		data, err := serdes.Marshal(env.Payload)
+		if err != nil {
+			return err
+		}
+		err = subscribeServer.Send(&v1.ReceivedMessage{
+			Id:       env.Id,
+			Data:     data,
+			Metadata: env.Headers,
+		})
+		if err != nil {
+			return err
+		}
+
+		var ack ackResponse
+		select {
+		//maxAckTime is reached
+		case <-ctx.Done():
+			return ctx.Err()
+		//server context canceled
+		case <-subscribeServer.Context().Done():
+			return subscribeServer.Context().Err()
+		case ack = <-waitAckChan:
+			if ack.error != nil {
+				return ack.error
+			}
+		}
+		if ack.request == nil {
+			return errors.New("invalid ack response")
+		}
+		if ack.request.GetError() != "" {
+			return errors.New(ack.request.GetError())
+		}
+		return nil
 	}
 }
 
@@ -165,10 +244,12 @@ func (srv *rusiServerImpl) Publish(ctx context.Context, request *v1.PublishReque
 	}
 
 	err = srv.publishHandler(ctx, messaging.PublishRequest{
-		PubsubName: request.GetPubsubName(),
-		Topic:      request.GetTopic(),
-		Data:       data,
-		Metadata:   metadata,
+		PubsubName:      request.GetPubsubName(),
+		Topic:           request.GetTopic(),
+		DataContentType: request.GetDataContentType(),
+		Data:            data,
+		Type:            request.GetType(),
+		Metadata:        metadata,
 	})
 
 	if err != nil {

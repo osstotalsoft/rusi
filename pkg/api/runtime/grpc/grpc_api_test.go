@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"net"
 	"reflect"
@@ -50,27 +51,31 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 	store := messaging.NewInMemoryBus()
 	publishHandler := func(ctx context.Context, request messaging.PublishRequest) error {
 		return store.Publish(request.Topic, &messaging.MessageEnvelope{
-			Headers: request.Metadata,
-			Payload: request.Data,
+			Id:              uuid.New().String(),
+			Type:            request.Type,
+			SpecVersion:     "1.0",
+			DataContentType: request.DataContentType,
+			Time:            time.Time{},
+			Subject:         request.Topic,
+			Headers:         request.Metadata,
+			Payload:         request.Data,
 		})
 	}
 	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.CloseFunc, error) {
 		return store.Subscribe(request.Topic, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
-			//simulate some work
-			time.Sleep(500 * time.Millisecond)
 			return request.Handler(ctx, msg)
 		}, nil)
 	}
 
 	server := startServer(t, publishHandler, subscribeHandler)
 	ctx := context.Background()
-	client, close := newClient(ctx, t)
-	defer close()
+	client, closer := newClient(ctx, t)
+	defer closer()
 
 	tests := []struct {
 		name             string
 		publishRequest   *v1.PublishRequest
-		subscribeRequest *v1.SubscribeRequest
+		subscribeRequest *v1.SubscriptionRequest
 		wantData         string
 		wantMetadata     map[string]string
 		wantErr          bool
@@ -82,7 +87,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 				Data:       []byte("\"data1\""), //json
 				Metadata:   nil,
 			},
-			&v1.SubscribeRequest{
+			&v1.SubscriptionRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
 			}, "data1", map[string]string{"topic": "t1"}, false,
@@ -94,7 +99,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 				Data:       []byte("\"data2\""), //json
 				Metadata:   map[string]string{"ip": "10"},
 			},
-			&v1.SubscribeRequest{
+			&v1.SubscriptionRequest{
 				PubsubName: "p1",
 				Topic:      "t1",
 			}, "data2", map[string]string{"ip": "10", "topic": "t1"}, false,
@@ -103,7 +108,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stream, err := client.Subscribe(ctx, tt.subscribeRequest)
+			stream, err := client.Subscribe(ctx)
+			assert.NoError(t, err)
+			err = stream.Send(createSubscribeRequest(tt.subscribeRequest))
+			assert.NoError(t, err)
 			//wait for subscribe
 			time.Sleep(100 * time.Millisecond)
 			_, err = client.Publish(ctx, tt.publishRequest)
@@ -111,11 +119,22 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 				t.Errorf("Publish() error = %v", err)
 				return
 			}
+			time.Sleep(100 * time.Millisecond)
 			msg, err := stream.Recv() //blocks
+			assert.NoError(t, err)
 			var data string
 			_ = serdes.Unmarshal(msg.GetData(), &data)
 			assert.Equal(t, tt.wantData, data)
 			assert.Equal(t, tt.wantMetadata, msg.GetMetadata())
+
+			_, err = client.Publish(ctx, tt.publishRequest)
+			time.Sleep(100 * time.Millisecond)
+			msg, err = stream.Recv() //blocks
+
+			err = stream.Send(createAckRequest(msg.Id, ""))
+			assert.NoError(t, err)
+			//wait for ack
+			time.Sleep(100 * time.Millisecond)
 		})
 	}
 	t.Run("refresh subscriber and maintain grpc stream", func(t *testing.T) {
@@ -126,22 +145,24 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			Data:       []byte("\"data1\""),
 			Metadata:   map[string]string{"ip": "10"},
 		}
-		stream, err := client.Subscribe(ctx, &v1.SubscribeRequest{
+		stream, err := client.Subscribe(ctx)
+		err = stream.Send(createSubscribeRequest(&v1.SubscriptionRequest{
 			PubsubName: "p1",
 			Topic:      topic,
-		})
+		}))
+		assert.NoError(t, err)
 		//wait for subscribe
 		time.Sleep(100 * time.Millisecond)
 		_, err = client.Publish(ctx, pubRequest)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		err = wait(func() error {
 			msg, err := stream.Recv() //blocks
 			assert.NotNil(t, msg)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			return err
 		}, "timeout waiting for receiving message on stream")
-		assert.Nil(t, err)
-		go server.Refresh()
+		assert.NoError(t, err)
+		server.Refresh()
 		//wait for refresh
 		err = waitInLoop(func() bool {
 			return store.GetSubscribersCount(topic) == 2
@@ -150,7 +171,9 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		client.Publish(ctx, pubRequest)
 		msg, err := stream.Recv() //blocks
 		assert.NotNil(t, msg)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
+		err = stream.Send(createAckRequest(msg.Id, ""))
+		assert.NoError(t, err)
 	})
 
 	t.Run("refresh subscriber when prev handler is not finished", func(t *testing.T) {
@@ -161,15 +184,18 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			Data:       []byte("\"data1\""),
 			Metadata:   map[string]string{"ip": "10"},
 		}
-		stream, err := client.Subscribe(ctx, &v1.SubscribeRequest{
+
+		stream, err := client.Subscribe(ctx)
+		err = stream.Send(createSubscribeRequest(&v1.SubscriptionRequest{
 			PubsubName: "p1",
 			Topic:      topic,
-		})
+		}))
+		assert.NoError(t, err)
 		//wait for subscribe
 		time.Sleep(100 * time.Millisecond)
 		_, err = client.Publish(ctx, pubRequest)
 		assert.Nil(t, err)
-		go server.Refresh()
+		server.Refresh()
 		//wait for refresh
 		err = waitInLoop(func() bool {
 			return store.GetSubscribersCount(topic) == 2
@@ -193,7 +219,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 	t.Run("close subscription, resubscribe then refresh", func(t *testing.T) {
 		topic := "t6"
 		ctx2, cancelFunc := context.WithCancel(ctx)
-		subRequest := &v1.SubscribeRequest{
+		subRequest := &v1.SubscriptionRequest{
 			PubsubName: "p1",
 			Topic:      topic,
 		}
@@ -203,11 +229,17 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			Data:       []byte("\"data1\""),
 			Metadata:   map[string]string{"ip": "10"},
 		}
-		stream, err := client.Subscribe(ctx2, subRequest)
+		stream, err := client.Subscribe(ctx2)
+		assert.NoError(t, err)
+		err = stream.Send(createSubscribeRequest(subRequest))
+		assert.NoError(t, err)
 		//wait for subscribe
 		time.Sleep(100 * time.Millisecond)
 		cancelFunc()
-		stream, err = client.Subscribe(ctx, subRequest)
+		stream, err = client.Subscribe(ctx)
+		assert.NoError(t, err)
+		err = stream.Send(createSubscribeRequest(subRequest))
+		assert.NoError(t, err)
 		//wait for subscribe
 		time.Sleep(100 * time.Millisecond)
 		assert.Nil(t, err)
@@ -229,6 +261,24 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		assert.Nil(t, err)
 
 	})
+
+	t.Run("subscribe and ack wrong message", func(t *testing.T) {
+		topic := "t7"
+		subRequest := &v1.SubscriptionRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+		}
+		stream, err := client.Subscribe(ctx)
+		err = stream.Send(createSubscribeRequest(subRequest))
+		assert.NoError(t, err)
+		//wait for subscribe
+		time.Sleep(100 * time.Millisecond)
+		err = stream.Send(createAckRequest("fdssdfsdf", ""))
+		assert.NoError(t, err)
+		time.Sleep(100 * time.Millisecond)
+
+	})
+
 }
 
 const bufSize = 1024 * 1024
@@ -290,4 +340,12 @@ func wait(fun func() error, msg string) error {
 	case e := <-c:
 		return e
 	}
+}
+func createSubscribeRequest(subscriptionRequest *v1.SubscriptionRequest) *v1.SubscribeRequest {
+	return &v1.SubscribeRequest{RequestType: &v1.SubscribeRequest_SubscriptionRequest{
+		SubscriptionRequest: subscriptionRequest}}
+}
+func createAckRequest(id, error string) *v1.SubscribeRequest {
+	return &v1.SubscribeRequest{RequestType: &v1.SubscribeRequest_AckRequest{
+		AckRequest: &v1.AckRequest{MessageId: id, Error: error}}}
 }

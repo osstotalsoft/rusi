@@ -146,40 +146,6 @@ func Test_runtime_PublishHandler(t *testing.T) {
 			},
 			"invalid path", "", "",
 		},
-		{
-			"runtime works even if subscriber has an error",
-			fields{
-				nil, nil,
-				func(channel chan configuration.Spec) {
-					channel <- configuration.Spec{}
-				},
-				func(channel chan components.Spec) {
-					channel <- components.Spec{
-						Name:     "p1",
-						Type:     "pubsub.natsstreaming",
-						Version:  "",
-						Metadata: map[string]string{},
-						Scopes:   nil,
-					}
-				},
-			},
-			args{
-				publishRequest: messaging.PublishRequest{
-					PubsubName: "p1",
-					Topic:      "t1",
-					Data:       "data1",
-				},
-				subscribeRequest: messaging.SubscribeRequest{
-					PubsubName: "p1",
-					Topic:      "t1",
-					Handler: func(ctx context.Context, msg *messaging.MessageEnvelope) error {
-						return errors.New("subscribe error")
-					},
-					Options: nil,
-				},
-			},
-			"", "", "",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

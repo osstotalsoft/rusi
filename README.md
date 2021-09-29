@@ -61,7 +61,7 @@ In Kubernetes mode Rusi will query the kubernetes api in order to find and regis
    
 2. Add custom middlewares (optional)
     ```yaml
-    apiVersion: dapr.io/v1alpha1
+    apiVersion: rusi.io/v1alpha1
     kind: Component
     metadata:
       name: uppercase

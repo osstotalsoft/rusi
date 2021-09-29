@@ -3,7 +3,9 @@ package messaging
 import (
 	"context"
 	"fmt"
+	"k8s.io/klog/v2"
 	"sync"
+	"time"
 )
 
 type inMemoryBus struct {
@@ -17,20 +19,18 @@ func NewInMemoryBus() *inMemoryBus {
 
 func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
 	h := c.handlers[topic]
+	c.mu.RUnlock()
 	if env.Headers == nil {
 		env.Headers = map[string]string{}
 	}
 	env.Headers["topic"] = topic
 	println("Publish to topic " + topic)
 
-	go func(hh []Handler) {
-		println("start runHandlers for topic " + topic)
-		runHandlers(hh, env)
-		println("finish runHandlers for topic " + topic)
+	println("start runHandlers for topic " + topic)
+	runHandlers(h, env)
+	println("finish runHandlers for topic " + topic)
 
-	}(h)
 	return nil
 }
 
@@ -61,9 +61,20 @@ func (c *inMemoryBus) GetSubscribersCount(topic string) int {
 }
 
 func runHandlers(handlers []Handler, env *MessageEnvelope) {
-	ctx := context.Background()
 	for i, h := range handlers {
-		println(fmt.Sprintf("runHandler %d with metadata %v", i, env.Headers))
-		h(ctx, env)
+		h := h
+		i := i
+		println(fmt.Sprintf("starting Handler %d with metadata %v", i, env.Headers))
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+			defer cancel()
+			err := h(ctx, env)
+			if err != nil {
+				klog.ErrorS(err, "error")
+				if err != context.Canceled {
+					panic(err)
+				}
+			}
+		}()
 	}
 }

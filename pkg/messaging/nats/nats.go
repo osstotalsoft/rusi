@@ -225,9 +225,9 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 
 		err = handler(context.Background(), &msg)
 		if err == nil {
-			// we only send a successful ACK if there is no error from Dapr runtime
+			// we only send a successful ACK if there is no error from Rusi runtime
 			natsMsg.Ack()
-			klog.V(4).InfoS("Message manually acknowledged")
+			klog.V(4).InfoS("Message manually acknowledged in NATS")
 		}
 	}
 
