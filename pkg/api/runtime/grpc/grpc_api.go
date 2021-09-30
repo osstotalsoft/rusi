@@ -112,10 +112,11 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 	refreshChan := srv.createRefreshChan()
 	handler := srv.buildSubscribeHandler(subscribeServer)
 	for {
+		hCtx, hCancel := context.WithCancel(ctx)
 		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
 			PubsubName: request.GetPubsubName(),
 			Topic:      request.GetTopic(),
-			Handler:    handler,
+			Handler:    handler(hCtx),
 			Options:    messagingSubscriptionOptions(request.GetOptions()),
 		})
 
@@ -127,11 +128,15 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 		select {
 		case <-ctx.Done():
 			exit = true
+			klog.V(4).InfoS("Context done for", "topic", request.Topic, "error", ctx.Err())
 		case <-refreshChan:
 			exit = false
+			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
 		}
+		hCancel()
 		err = unsub()
 		if err != nil {
+			klog.V(4).ErrorS(err, "error unsubscribing")
 			return err
 		}
 		if exit {
@@ -141,79 +146,99 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 	}
 }
 
-func (srv *rusiServerImpl) buildSubscribeHandler(subscribeServer v1.Rusi_SubscribeServer) messaging.Handler {
+type ackResponse struct {
+	request *v1.AckRequest
+	error   error
+}
 
-	type ackResponse struct {
-		request *v1.AckRequest
-		error   error
+func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer) func(context.Context) messaging.Handler {
+	waitAcks := map[string]chan ackResponse{}
+	mu := &sync.RWMutex{}
+
+	//monitor incoming ack stream for the current subscription
+	go startAckReceiverForStream(waitAcks, mu, stream)
+
+	return func(buildCtx context.Context) messaging.Handler {
+		return func(ctx context.Context, env *messaging.MessageEnvelope) error {
+			if env.Id == "" {
+				return errors.New("message id is missing")
+			}
+			mu.Lock()
+
+			waitAckChan := make(chan ackResponse)
+			waitAcks[env.Id] = waitAckChan
+			//cleanup channel
+			defer func() {
+				mu.Lock()
+				delete(waitAcks, env.Id)
+				mu.Unlock()
+			}()
+			mu.Unlock()
+
+			data, err := serdes.Marshal(env.Payload)
+			if err != nil {
+				return err
+			}
+			err = stream.Send(&v1.ReceivedMessage{
+				Id:       env.Id,
+				Data:     data,
+				Metadata: env.Headers,
+			})
+			if err != nil {
+				return err
+			}
+			klog.V(4).InfoS("Message sent to grpc, waiting for ack", "topic", env.Subject, "id", env.Id)
+
+			var ack ackResponse
+			select {
+			//handler builder closed context
+			case <-buildCtx.Done():
+				klog.V(4).InfoS("Context done before ack", "message", buildCtx.Err())
+				return buildCtx.Err()
+			//subscriber context is done
+			case <-ctx.Done():
+				klog.V(4).InfoS("Context done before ack", "message", ctx.Err())
+				return ctx.Err()
+			case ack = <-waitAckChan:
+				klog.V(4).InfoS("Ack received", "topic", env.Subject, "ack", ack.request, "error", ack.error)
+				if ack.error != nil {
+					return ack.error
+				}
+			}
+
+			if ack.request == nil {
+				return errors.New("invalid ack response")
+			}
+			if ack.request.GetError() != "" {
+				return errors.New(ack.request.GetError())
+			}
+			return nil
+		}
 	}
+}
+
+func startAckReceiverForStream(waitAcks map[string]chan ackResponse, mu *sync.RWMutex,
+	stream v1.Rusi_SubscribeServer) {
 
 	//wait for ack from the client
-	waitAcks := map[string]chan ackResponse{}
-	mu := sync.RWMutex{}
-	go func() {
-		r, err := subscribeServer.Recv()
+	for {
+		r, err := stream.Recv() //blocks
 		mu.RLock()
 		if err != nil {
 			for _, channel := range waitAcks {
 				channel <- ackResponse{error: err}
+				close(channel)
 			}
 			return
 		}
 		for id, channel := range waitAcks {
 			if id == r.GetAckRequest().GetMessageId() {
 				channel <- ackResponse{request: r.GetAckRequest()}
+				close(channel)
 				break
 			}
 		}
 		mu.RUnlock()
-		mu.Lock()
-		delete(waitAcks, r.GetAckRequest().GetMessageId())
-		mu.Unlock()
-	}()
-
-	return func(ctx context.Context, env *messaging.MessageEnvelope) error {
-		if env.Id == "" {
-			return errors.New("message id is missing")
-		}
-		mu.Lock()
-		waitAckChan := make(chan ackResponse)
-		waitAcks[env.Id] = waitAckChan
-		mu.Unlock()
-
-		data, err := serdes.Marshal(env.Payload)
-		if err != nil {
-			return err
-		}
-		err = subscribeServer.Send(&v1.ReceivedMessage{
-			Id:       env.Id,
-			Data:     data,
-			Metadata: env.Headers,
-		})
-		if err != nil {
-			return err
-		}
-
-		var ack ackResponse
-		select {
-		//maxAckTime is reached
-		case <-ctx.Done():
-			return ctx.Err()
-		//server context canceled
-		case <-subscribeServer.Context().Done():
-			return subscribeServer.Context().Err()
-		case ack = <-waitAckChan:
-			if ack.error != nil {
-				return ack.error
-			}
-		}
-		if ack.request == nil {
-			return errors.New("invalid ack response")
-		}
-		if ack.request.GetError() != "" {
-			return errors.New(ack.request.GetError())
-		}
-		return nil
 	}
 }
 
