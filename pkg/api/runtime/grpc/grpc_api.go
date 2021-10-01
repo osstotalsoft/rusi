@@ -146,17 +146,18 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 	}
 }
 
-type ackResponse struct {
-	request *v1.AckRequest
-	error   error
+type subAck struct {
+	ackHandler messaging.AckHandler
+	errCh      chan error
 }
 
 func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer) func(context.Context) messaging.Handler {
-	waitAcks := map[string]chan ackResponse{}
+
+	subAckMap := map[string]*subAck{}
 	mu := &sync.RWMutex{}
 
 	//monitor incoming ack stream for the current subscription
-	go startAckReceiverForStream(waitAcks, mu, stream)
+	go startAckReceiverForStream(subAckMap, mu, stream)
 
 	return func(buildCtx context.Context) messaging.Handler {
 		return func(ctx context.Context, env *messaging.MessageEnvelope) error {
@@ -164,17 +165,17 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 				return errors.New("message id is missing")
 			}
 			mu.Lock()
-
-			waitAckChan := make(chan ackResponse)
-			waitAcks[env.Id] = waitAckChan
-			//cleanup channel
+			errChan := make(chan error)
+			subAckMap[env.Id] = &subAck{nil, errChan}
+			mu.Unlock()
+			//cleanup
 			defer func() {
 				mu.Lock()
-				delete(waitAcks, env.Id)
+				delete(subAckMap, env.Id)
 				mu.Unlock()
 			}()
-			mu.Unlock()
 
+			//send message to GRPC
 			data, err := serdes.Marshal(env.Payload)
 			if err != nil {
 				return err
@@ -189,7 +190,6 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 			}
 			klog.V(4).InfoS("Message sent to grpc, waiting for ack", "topic", env.Subject, "id", env.Id)
 
-			var ack ackResponse
 			select {
 			//handler builder closed context
 			case <-buildCtx.Done():
@@ -199,42 +199,34 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 			case <-ctx.Done():
 				klog.V(4).InfoS("Context done before ack", "message", ctx.Err())
 				return ctx.Err()
-			case ack = <-waitAckChan:
-				klog.V(4).InfoS("Ack received", "topic", env.Subject, "ack", ack.request, "error", ack.error)
-				if ack.error != nil {
-					return ack.error
-				}
+			case err = <-errChan:
+				klog.V(4).InfoS("Ack received", "topic", env.Subject, "error", err)
+				return err
 			}
-
-			if ack.request == nil {
-				return errors.New("invalid ack response")
-			}
-			if ack.request.GetError() != "" {
-				return errors.New(ack.request.GetError())
-			}
-			return nil
 		}
 	}
 }
 
-func startAckReceiverForStream(waitAcks map[string]chan ackResponse, mu *sync.RWMutex,
-	stream v1.Rusi_SubscribeServer) {
+func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, stream v1.Rusi_SubscribeServer) {
 
 	//wait for ack from the client
 	for {
 		r, err := stream.Recv() //blocks
-		mu.RLock()
-		if err != nil {
-			for _, channel := range waitAcks {
-				channel <- ackResponse{error: err}
-				close(channel)
+		if err == nil {
+			if r.GetAckRequest() == nil {
+				err = errors.New("invalid ack response")
 			}
-			return
+			if r.GetAckRequest().GetError() != "" {
+				err = errors.New(r.GetAckRequest().GetError())
+			}
 		}
-		for id, channel := range waitAcks {
-			if id == r.GetAckRequest().GetMessageId() {
-				channel <- ackResponse{request: r.GetAckRequest()}
-				close(channel)
+
+		mu.RLock()
+		mid := r.GetAckRequest().GetMessageId()
+		for id, ack := range subAckMap {
+			if id == mid {
+				//ack.ackHandler(mid, err)
+				ack.errCh <- err
 				break
 			}
 		}

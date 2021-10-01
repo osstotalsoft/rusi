@@ -27,7 +27,10 @@ type MessageEnvelope struct {
 }
 
 type CloseFunc func() error
+type AckHandler func(string, error)
+
 type Handler func(ctx context.Context, msg *MessageEnvelope) error
+type HandlerWithAck func(ctx context.Context, msg *MessageEnvelope, ackHandler AckHandler) error
 
 type PublishRequest struct {
 	PubsubName      string
