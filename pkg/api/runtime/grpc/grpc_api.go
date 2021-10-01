@@ -121,6 +121,7 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 		})
 
 		if err != nil {
+			hCancel()
 			return err
 		}
 
@@ -225,8 +226,12 @@ func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, s
 		mid := r.GetAckRequest().GetMessageId()
 		for id, ack := range subAckMap {
 			if id == mid {
-				//ack.ackHandler(mid, err)
-				ack.errCh <- err
+				if ack.ackHandler != nil {
+					ack.ackHandler(mid, err)
+				}
+				if ack.errCh != nil {
+					ack.errCh <- err
+				}
 				break
 			}
 		}
