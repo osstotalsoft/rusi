@@ -165,8 +165,9 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 			if env.Id == "" {
 				return errors.New("message id is missing")
 			}
-			mu.Lock()
+
 			errChan := make(chan error)
+			mu.Lock()
 			subAckMap[env.Id] = &subAck{nil, errChan}
 			mu.Unlock()
 			//cleanup

@@ -112,7 +112,11 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			err = stream.Send(createSubscribeRequest(tt.subscribeRequest))
 			assert.NoError(t, err)
 			//wait for subscribe
-			time.Sleep(100 * time.Millisecond)
+			err = waitInLoop(func() bool {
+				return store.GetSubscribersCount(tt.subscribeRequest.Topic) == 1
+			})
+			assert.NoError(t, err, "subscribers count does not match")
+
 			go client.Publish(ctx, tt.publishRequest)
 			msg1, err := stream.Recv() //blocks
 			assert.NoError(t, err)
@@ -152,7 +156,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		}))
 		assert.NoError(t, err)
 		//wait for subscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		assert.NoError(t, err, "subscribers count does not match")
 		go client.Publish(ctx, pubRequest)
 		var msg1, msg2 *v1.ReceivedMessage
 		err = wait(func() error {
@@ -199,7 +206,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		}))
 		assert.NoError(t, err)
 		//wait for subscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		assert.NoError(t, err, "subscribers count does not match")
 		go client.Publish(ctx, pubRequest)
 		time.Sleep(100 * time.Millisecond)
 		server.Refresh()
@@ -247,14 +257,20 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = stream.Send(createSubscribeRequest(subRequest))
 		assert.NoError(t, err)
 		//wait for subscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		assert.NoError(t, err, "subscribers count does not match")
 		cancelFunc()
 		stream, err = client.Subscribe(ctx)
 		assert.NoError(t, err)
 		err = stream.Send(createSubscribeRequest(subRequest))
 		assert.NoError(t, err)
 		//wait for subscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		assert.NoError(t, err, "subscribers count does not match")
 		go client.Publish(ctx, pubRequest)
 		server.Refresh()
 		//wait for refresh
@@ -286,7 +302,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = stream.Send(createSubscribeRequest(subRequest))
 		assert.NoError(t, err)
 		//wait for subscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		assert.NoError(t, err, "subscribers count does not match")
 		err = stream.Send(createAckRequest("fdssdfsdf", ""))
 		assert.NoError(t, err)
 		time.Sleep(100 * time.Millisecond)
@@ -312,7 +331,11 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = stream.Send(createSubscribeRequest(subRequest))
 		assert.NoError(t, err)
 		//wait for subscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		assert.NoError(t, err, "subscribers count does not match")
+
 		go client.Publish(ctx, pubRequest)
 		go client.Publish(ctx, pubRequest)
 		var msg1, msg2 *v1.ReceivedMessage
@@ -349,7 +372,11 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = stream.Send(createSubscribeRequest(subRequest))
 		assert.NoError(t, err)
 		//wait for subscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		assert.NoError(t, err, "subscribers count does not match")
+
 		go client.Publish(ctx, pubRequest)
 		var msg *v1.ReceivedMessage
 		err = wait(func() error {
