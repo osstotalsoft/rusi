@@ -191,6 +191,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("refresh subscriber when prev handler is not finished", func(t *testing.T) {
@@ -243,6 +244,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("close subscription, resubscribe then refresh", func(t *testing.T) {
@@ -297,6 +299,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("subscribe and ack wrong message", func(t *testing.T) {
@@ -322,6 +325,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("subscribe, receive two messages and ack both", func(t *testing.T) {
@@ -366,6 +370,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("subscribe, receive messages ack with error", func(t *testing.T) {
@@ -406,6 +411,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("subscribe twice", func(t *testing.T) {
@@ -442,6 +448,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
+		assert.NoError(t, err)
 	})
 
 	//check everything closed ok
