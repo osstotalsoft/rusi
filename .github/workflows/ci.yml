@@ -49,5 +49,5 @@ jobs:
     - name: Test9
       run: make test
 
-    - name: Test9
+    - name: Test10
       run: make test
