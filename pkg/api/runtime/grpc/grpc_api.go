@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"rusi/pkg/api/runtime"
@@ -94,29 +95,33 @@ func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
 }
 
 // Subscribe creates a subscription
-func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServer v1.Rusi_SubscribeServer) error {
+func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) error {
+	//block until subscriptionRequest is received
+	r, err := subscribeServer.Recv()
+	if err != nil {
+		return err
+	}
+	request := r.GetSubscriptionRequest()
+	if request == nil {
+		return errors.New("invalid subscription request")
+	}
+
 	ctx, cancel := context.WithCancel(subscribeServer.Context())
 	defer cancel()
 	exit := false
 	refreshChan := srv.createRefreshChan()
+	handler := srv.buildSubscribeHandler(subscribeServer)
 	for {
+		hCtx, hCancel := context.WithCancel(ctx)
 		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
 			PubsubName: request.GetPubsubName(),
 			Topic:      request.GetTopic(),
-			Handler: func(_ context.Context, env *messaging.MessageEnvelope) error {
-				data, err := serdes.Marshal(env.Payload)
-				if err != nil {
-					return err
-				}
-				return subscribeServer.Send(&v1.ReceivedMessage{
-					Data:     data,
-					Metadata: env.Headers,
-				})
-			},
-			Options: messagingSubscriptionOptions(request.GetOptions()),
+			Handler:    handler(hCtx),
+			Options:    messagingSubscriptionOptions(request.GetOptions()),
 		})
 
 		if err != nil {
+			hCancel()
 			return err
 		}
 
@@ -124,17 +129,114 @@ func (srv *rusiServerImpl) Subscribe(request *v1.SubscribeRequest, subscribeServ
 		select {
 		case <-ctx.Done():
 			exit = true
+			klog.V(4).InfoS("Context done for", "topic", request.Topic, "error", ctx.Err())
 		case <-refreshChan:
 			exit = false
+			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
 		}
+		hCancel()
 		err = unsub()
 		if err != nil {
+			klog.V(4).ErrorS(err, "error unsubscribing")
 			return err
 		}
 		if exit {
 			srv.removeRefreshChan(refreshChan)
 			return ctx.Err()
 		}
+	}
+}
+
+type subAck struct {
+	ackHandler messaging.AckHandler
+	errCh      chan error
+}
+
+func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer) func(context.Context) messaging.Handler {
+
+	subAckMap := map[string]*subAck{}
+	mu := &sync.RWMutex{}
+
+	//monitor incoming ack stream for the current subscription
+	go startAckReceiverForStream(subAckMap, mu, stream)
+
+	return func(buildCtx context.Context) messaging.Handler {
+		return func(ctx context.Context, env *messaging.MessageEnvelope) error {
+			if env.Id == "" {
+				return errors.New("message id is missing")
+			}
+
+			errChan := make(chan error)
+			mu.Lock()
+			subAckMap[env.Id] = &subAck{nil, errChan}
+			mu.Unlock()
+			//cleanup
+			defer func() {
+				mu.Lock()
+				delete(subAckMap, env.Id)
+				mu.Unlock()
+			}()
+
+			//send message to GRPC
+			data, err := serdes.Marshal(env.Payload)
+			if err != nil {
+				return err
+			}
+			err = stream.Send(&v1.ReceivedMessage{
+				Id:       env.Id,
+				Data:     data,
+				Metadata: env.Headers,
+			})
+			if err != nil {
+				return err
+			}
+			klog.V(4).InfoS("Message sent to grpc, waiting for ack", "topic", env.Subject, "id", env.Id)
+
+			select {
+			//handler builder closed context
+			case <-buildCtx.Done():
+				klog.V(4).InfoS("Context done before ack", "message", buildCtx.Err())
+				return buildCtx.Err()
+			//subscriber context is done
+			case <-ctx.Done():
+				klog.V(4).InfoS("Context done before ack", "message", ctx.Err())
+				return ctx.Err()
+			case err = <-errChan:
+				klog.V(4).InfoS("Ack received", "topic", env.Subject, "error", err)
+				return err
+			}
+		}
+	}
+}
+
+func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, stream v1.Rusi_SubscribeServer) {
+
+	//wait for ack from the client
+	for {
+		r, err := stream.Recv() //blocks
+		if err == nil {
+			if r.GetAckRequest() == nil {
+				err = errors.New("invalid ack response")
+			}
+			if r.GetAckRequest().GetError() != "" {
+				err = errors.New(r.GetAckRequest().GetError())
+			}
+		}
+
+		mu.RLock()
+		mid := r.GetAckRequest().GetMessageId()
+		for id, ack := range subAckMap {
+			if id == mid {
+				if ack.ackHandler != nil {
+					ack.ackHandler(mid, err)
+				}
+				if ack.errCh != nil {
+					ack.errCh <- err
+				}
+				break
+			}
+		}
+		mu.RUnlock()
 	}
 }
 
@@ -165,10 +267,12 @@ func (srv *rusiServerImpl) Publish(ctx context.Context, request *v1.PublishReque
 	}
 
 	err = srv.publishHandler(ctx, messaging.PublishRequest{
-		PubsubName: request.GetPubsubName(),
-		Topic:      request.GetTopic(),
-		Data:       data,
-		Metadata:   metadata,
+		PubsubName:      request.GetPubsubName(),
+		Topic:           request.GetTopic(),
+		DataContentType: request.GetDataContentType(),
+		Data:            data,
+		Type:            request.GetType(),
+		Metadata:        metadata,
 	})
 
 	if err != nil {

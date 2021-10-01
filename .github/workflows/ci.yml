@@ -23,4 +23,4 @@ jobs:
       run: make build-linux
 
     - name: Test
-      run: go test -v ./...
+      run: make testV

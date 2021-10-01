@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/nats-io/nats.go"
 	"math/rand"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
@@ -184,6 +185,16 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 	n.ctx, n.cancel = context.WithCancel(context.Background())
 	n.natStreamingConn = natStreamingConn
 
+	n.natStreamingConn.NatsConn().SetReconnectHandler(func(conn *nats.Conn) {
+		klog.Info("SetReconnectHandler")
+	})
+	n.natStreamingConn.NatsConn().SetClosedHandler(func(conn *nats.Conn) {
+		klog.Info("SetClosedHandler")
+	})
+	n.natStreamingConn.NatsConn().SetDisconnectErrHandler(func(conn *nats.Conn, err error) {
+		klog.ErrorS(err, "SetDisconnectErrHandler")
+	})
+
 	return nil
 }
 
@@ -225,9 +236,11 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 
 		err = handler(context.Background(), &msg)
 		if err == nil {
-			// we only send a successful ACK if there is no error from Dapr runtime
+			// we only send a successful ACK if there is no error
 			natsMsg.Ack()
-			klog.V(4).InfoS("Message manually acknowledged")
+			klog.V(4).InfoS("Message manually acknowledged in NATS")
+		} else {
+			klog.ErrorS(err, "Error running subscriber pipeline")
 		}
 	}
 

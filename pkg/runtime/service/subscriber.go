@@ -24,8 +24,7 @@ func (srv *subscriberService) StartSubscribing(request messaging.SubscribeReques
 	pipe := srv.pipeline.Build(request.Handler)
 
 	return srv.subscriber.Subscribe(request.Topic, func(ctx context.Context, env *messaging.MessageEnvelope) error {
-		klog.InfoS("message received on", "topic", request.Topic,
-			"payload", env.Payload, "headers", env.Headers)
+		klog.InfoS("message received on", "topic", request.Topic, "message", env)
 
 		ctx = context.WithValue(ctx, messaging.TopicKey, request.Topic)
 		err := pipe(ctx, env)

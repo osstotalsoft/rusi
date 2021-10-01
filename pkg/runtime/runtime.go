@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	"reflect"
@@ -13,6 +14,7 @@ import (
 	"rusi/pkg/messaging"
 	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
+	"time"
 )
 
 type runtime struct {
@@ -105,8 +107,13 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 		return errors.New(fmt.Sprintf(runtime_api.ErrPubsubNotFound, request.PubsubName))
 	}
 	env := &messaging.MessageEnvelope{
-		Headers: request.Metadata,
-		Payload: request.Data,
+		Id:              uuid.New().String(),
+		Time:            time.Now(),
+		Subject:         request.Topic,
+		Type:            request.Type,
+		DataContentType: request.DataContentType,
+		Headers:         request.Metadata,
+		Payload:         request.Data,
 	}
 
 	ctx = context.WithValue(ctx, messaging.TopicKey, request.Topic)
