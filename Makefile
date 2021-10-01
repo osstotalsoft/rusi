@@ -35,8 +35,10 @@ upgrade-all:
 	go mod tidy
 
 test:
-	#go test -race `go list ./... | grep -v 'rusi/pkg/operator'`
-	go test -race ./...
+	go test -race `go list ./... | grep -v 'rusi/pkg/operator'`
+
+testV:
+	go test -race -v `go list ./... | grep -v 'rusi/pkg/operator'`
 
 include docker/docker.mk
 include pkg/operator/tools/generate_kube_crd.mk

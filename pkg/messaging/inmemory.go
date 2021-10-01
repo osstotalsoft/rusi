@@ -10,13 +10,13 @@ import (
 )
 
 type inMemoryBus struct {
-	handlers       map[string][]Handler
+	handlers       map[string][]*Handler
 	mu             sync.RWMutex
 	workingCounter *int32
 }
 
 func NewInMemoryBus() *inMemoryBus {
-	return &inMemoryBus{handlers: map[string][]Handler{}, workingCounter: new(int32)}
+	return &inMemoryBus{handlers: map[string][]*Handler{}, workingCounter: new(int32)}
 }
 
 func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
@@ -41,14 +41,21 @@ func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
 func (c *inMemoryBus) Subscribe(topic string, handler Handler, options *SubscriptionOptions) (CloseFunc, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.handlers[topic] = append(c.handlers[topic], handler)
-	position := len(c.handlers[topic]) - 1
+
+	handlerP := &handler
+	c.handlers[topic] = append(c.handlers[topic], handlerP)
 	println("Subscribed to topic " + topic)
 
 	return func() error {
 		c.mu.Lock()
 		defer c.mu.Unlock()
-		c.handlers[topic] = append(c.handlers[topic][:position], c.handlers[topic][position+1:]...)
+		var s []*Handler
+		for _, h := range c.handlers[topic] {
+			if h != handlerP {
+				s = append(s, h)
+			}
+		}
+		c.handlers[topic] = s
 
 		println("unSubscribe from topic " + topic)
 		return nil
@@ -72,7 +79,7 @@ func (c *inMemoryBus) GetSubscribersCount(topic string) int {
 	return len(c.handlers[topic])
 }
 
-func (c *inMemoryBus) runHandlers(handlers []Handler, env *MessageEnvelope) {
+func (c *inMemoryBus) runHandlers(handlers []*Handler, env *MessageEnvelope) {
 	sg := sync.WaitGroup{}
 	sg.Add(len(handlers))
 	c.mu.RLock()
@@ -84,7 +91,7 @@ func (c *inMemoryBus) runHandlers(handlers []Handler, env *MessageEnvelope) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 			defer cancel()
 			defer sg.Done()
-			err := h(ctx, env)
+			err := (*h)(ctx, env)
 			if err != nil {
 				klog.ErrorS(err, "error")
 			}

@@ -187,6 +187,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		closer()
+		//wait closing
+		err = waitInLoop(func() bool {
+			return store.IsDoneWorking()
+		})
 	})
 
 	t.Run("refresh subscriber when prev handler is not finished", func(t *testing.T) {
@@ -235,8 +239,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		closer()
-		//wait for close
-		time.Sleep(100 * time.Millisecond)
+		//wait closing
+		err = waitInLoop(func() bool {
+			return store.IsDoneWorking()
+		})
 	})
 
 	t.Run("close subscription, resubscribe then refresh", func(t *testing.T) {
@@ -287,8 +293,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		}, "timeout waiting for receiving message on stream")
 		assert.NoError(t, err)
 		closer()
-		//wait for unsubscribe
-		time.Sleep(100 * time.Millisecond)
+		//wait closing
+		err = waitInLoop(func() bool {
+			return store.IsDoneWorking()
+		})
 	})
 
 	t.Run("subscribe and ack wrong message", func(t *testing.T) {
@@ -310,8 +318,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		assert.NoError(t, err)
 		time.Sleep(100 * time.Millisecond)
 		closer()
-		//wait for unsubscribe
-		time.Sleep(100 * time.Millisecond)
+		//wait closing
+		err = waitInLoop(func() bool {
+			return store.IsDoneWorking()
+		})
 	})
 
 	t.Run("subscribe, receive two messages and ack both", func(t *testing.T) {
@@ -352,8 +362,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		})
 		assert.NoError(t, err, "not done processing all subscribers")
 		closer()
-		//wait for unsubscribe
-		time.Sleep(100 * time.Millisecond)
+		//wait closing
+		err = waitInLoop(func() bool {
+			return store.IsDoneWorking()
+		})
 	})
 
 	t.Run("subscribe, receive messages ack with error", func(t *testing.T) {
@@ -390,8 +402,46 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		})
 		assert.NoError(t, err, "not done processing all subscribers")
 		closer()
+		//wait closing
+		err = waitInLoop(func() bool {
+			return store.IsDoneWorking()
+		})
+	})
+
+	t.Run("subscribe twice", func(t *testing.T) {
+		topic := "t7"
+		client, closer := newClient(ctx, t)
+		subRequest := &v1.SubscriptionRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+		}
+		pubRequest := &v1.PublishRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+			Data:       []byte("\"data1\""),
+		}
+		s1, _ := client.Subscribe(ctx)
+		s1.Send(createSubscribeRequest(subRequest))
+		s2, _ := client.Subscribe(ctx)
+		s2.Send(createSubscribeRequest(subRequest))
+		//wait for subscribe
+		err := waitInLoop(func() bool {
+			return store.GetSubscribersCount(topic) == 2
+		})
+		assert.NoError(t, err, "subscribers count does not match")
+
+		go client.Publish(ctx, pubRequest)
+		err = wait(func() error {
+			s1.Recv() //blocks
+			s2.Recv() //blocks
+			return nil
+		}, "timeout waiting for receiving message on stream")
+		assert.NoError(t, err)
+		closer()
 		//wait for unsubscribe
-		time.Sleep(100 * time.Millisecond)
+		err = waitInLoop(func() bool {
+			return store.IsDoneWorking()
+		})
 	})
 
 	//check everything closed ok

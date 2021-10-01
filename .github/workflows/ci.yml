@@ -23,31 +23,31 @@ jobs:
       run: make build-linux
 
     - name: Test1
-      run: make test
+      run: make testV
 
     - name: Test2
-      run: make test
+      run: make testV
 
     - name: Test3
-      run: make test
+      run: make testV
 
     - name: Test4
-      run: make test
+      run: make testV
 
     - name: Test5
-      run: make test
+      run: make testV
 
     - name: Test6
-      run: make test
+      run: make testV
 
     - name: Test7
-      run: make test
+      run: make testV
 
     - name: Test8
-      run: make test
+      run: make testV
 
     - name: Test9
-      run: make test
+      run: make testV
 
     - name: Test10
-      run: make test
+      run: make testV
