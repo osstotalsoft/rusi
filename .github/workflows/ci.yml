@@ -22,5 +22,32 @@ jobs:
     - name: Build
       run: make build-linux
 
-    - name: Test
-      run: go test -v ./...
+    - name: Test1
+      run: make test
+
+    - name: Test2
+      run: make test
+
+    - name: Test3
+      run: make test
+
+    - name: Test4
+      run: make test
+
+    - name: Test5
+      run: make test
+
+    - name: Test6
+      run: make test
+
+    - name: Test7
+      run: make test
+
+    - name: Test8
+      run: make test
+
+    - name: Test9
+      run: make test
+
+    - name: Test9
+      run: make test
