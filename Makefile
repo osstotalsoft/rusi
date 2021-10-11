@@ -16,7 +16,7 @@ HELM_CHART_ROOT:=./helm
 ################################################################################
 build-linux:
 	mkdir -p $(OUT_DIR)
-	GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector
+	CGO_ENABLED=0 GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector
 
 modtidy:
 	go mod tidy
