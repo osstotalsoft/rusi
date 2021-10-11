@@ -357,7 +357,7 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 	args := []string{
 		"--rusi-grpc-port", fmt.Sprintf("%v", sidecarAPIGRPCPort),
 		"--app-id", id,
-		"--mode kubernetes",
+		"--mode", "kubernetes",
 		"--config", getConfig(annotations),
 	}
 
