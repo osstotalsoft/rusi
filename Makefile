@@ -16,7 +16,7 @@ HELM_CHART_ROOT:=./helm
 ################################################################################
 build-linux:
 	mkdir -p $(OUT_DIR)
-	CGO_ENABLED=0 GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector
+	CGO_ENABLED=0 GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector ./cmd/operator
 
 modtidy:
 	go mod tidy
@@ -25,10 +25,11 @@ init-proto:
 	go get google.golang.org/protobuf/cmd/protoc-gen-go google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 clean-proto:
-	rm pkg/proto/runtime/v1/*.go
+	rm -rf pkg/proto/*
 
 gen-proto:
 	protoc proto/runtime/v1/* --go-grpc_out=. --go_out=. --go-grpc_opt=require_unimplemented_servers=false
+	protoc proto/operator/v1/* --go-grpc_out=. --go_out=. --go-grpc_opt=require_unimplemented_servers=false
 
 upgrade-all:
 	go get -u ./...

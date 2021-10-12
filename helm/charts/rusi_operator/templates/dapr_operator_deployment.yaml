@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rusi-operator
+  labels:
+    app: rusi-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rusi-operator
+  template:
+    metadata:
+      labels:
+        app: rusi-operator
+        app.kubernetes.io/name: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ .Values.global.tag }}
+        app.kubernetes.io/component: operator
+        app.kubernetes.io/part-of: "rusi"
+        app.kubernetes.io/managed-by: "helm"
+{{- if eq .Values.global.prometheus.enabled true }}
+      annotations:
+        prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+        prometheus.io/port: "{{ .Values.global.prometheus.port }}"
+        prometheus.io/path: "/"
+{{- end }}
+    spec:
+      containers:
+      - name: rusi-operator
+{{- if contains "/" .Values.image.name }}
+        image: "{{ .Values.image.name }}"
+{{- else }}
+        image: "{{ .Values.global.registry }}/rusi:{{ .Values.global.tag }}"
+{{- end }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+{{- if eq .Values.global.daprControlPlaneOs "linux" }}
+        securityContext:
+          runAsNonRoot: {{ .Values.runAsNonRoot }}
+{{- if eq .Values.debug.enabled true }}
+          capabilities:
+            add:
+            - SYS_PTRACE
+{{- end }}
+{{- end }}
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        ports:
+        - containerPort: 6500
+{{- if eq .Values.global.prometheus.enabled true }}
+        - name: metrics
+          containerPort: {{ .Values.global.prometheus.port }}
+          protocol: TCP
+{{- end }}
+{{- if eq .Values.debug.enabled true }}
+        - name: debug
+          containerPort: {{ .Values.debug.port }}
+          protocol: TCP
+{{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        volumeMounts:
+          - name: credentials
+            mountPath: /var/run/rusi/credentials
+            readOnly: true
+        command:
+{{- if eq .Values.debug.enabled false }}
+        - "/operator"
+{{- else }}
+        - "/dlv"
+{{- end }}
+        args:
+{{- if eq .Values.debug.enabled true }}
+        - "--listen=:{{ .Values.debug.port }}"
+        - "--accept-multiclient"
+        - "--headless=true"
+        - "--log"
+        - "--api-version=2"
+        - "exec"
+        - "/operator"
+        - "--"
+{{- end }}
+{{- if eq .Values.global.prometheus.enabled true }}
+        - "--enable-metrics"
+        - "--metrics-port"
+        - "{{ .Values.global.prometheus.port }}"
+{{- else }}
+        - "--enable-metrics=false"
+{{- end }}
+      serviceAccountName: rusi-operator
+      volumes:
+        - name: credentials
+          secret:
+            secretName: rusi-trust-bundle
+{{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        - name: {{ .Values.global.imagePullSecrets }}
+{{- end }}

@@ -16,23 +16,25 @@ const (
 )
 
 type ConfigBuilder struct {
-	mode            string
-	rusiGRPCPort    string
-	appPort         string
-	componentsPath  string
-	config          string
-	appID           string
-	enableProfiling bool
+	mode                string
+	rusiGRPCPort        string
+	appPort             string
+	componentsPath      string
+	config              string
+	controlPlaneAddress string
+	appID               string
+	enableProfiling     bool
 }
 
 type Config struct {
-	Mode            modes.RusiMode
-	RusiGRPCPort    string
-	AppPort         string
-	ComponentsPath  string
-	Config          string
-	AppID           string
-	EnableProfiling bool
+	Mode                modes.RusiMode
+	RusiGRPCPort        string
+	AppPort             string
+	ComponentsPath      string
+	Config              string
+	ControlPlaneAddress string
+	AppID               string
+	EnableProfiling     bool
 }
 
 func NewRuntimeConfigBuilder() ConfigBuilder {
@@ -48,6 +50,7 @@ func (c *ConfigBuilder) AttachCmdFlags(
 	stringVar(&c.appPort, "app-port", "", "The port the application is listening on")
 	stringVar(&c.componentsPath, "components-path", "", "Path for components directory. If empty, components will not be loaded. Self-hosted mode only")
 	stringVar(&c.config, "config", "", "Path to config file, or name of a configuration object")
+	stringVar(&c.controlPlaneAddress, "control-plane-address", "", "Address for Rusi control plane")
 	stringVar(&c.appID, "app-id", "", "A unique ID for Rusi. Used for Service Discovery and state")
 	boolVar(&c.enableProfiling, "enable-profiling", false, "Enable profiling")
 }
@@ -72,13 +75,14 @@ func (c *ConfigBuilder) Build() (Config, error) {
 	}
 
 	return Config{
-		Mode:            modes.RusiMode(c.mode),
-		RusiGRPCPort:    c.rusiGRPCPort,
-		AppPort:         c.appPort,
-		ComponentsPath:  c.componentsPath,
-		Config:          c.config,
-		AppID:           c.appID,
-		EnableProfiling: c.enableProfiling,
+		Mode:                modes.RusiMode(c.mode),
+		RusiGRPCPort:        c.rusiGRPCPort,
+		AppPort:             c.appPort,
+		ComponentsPath:      c.componentsPath,
+		Config:              c.config,
+		AppID:               c.appID,
+		EnableProfiling:     c.enableProfiling,
+		ControlPlaneAddress: c.controlPlaneAddress,
 	}, nil
 
 }
@@ -91,6 +95,9 @@ func (c *ConfigBuilder) validate() error {
 		return errors.New("config parameter cannot be empty")
 	}
 
+	if modes.RusiMode(c.mode) == modes.KubernetesMode && c.controlPlaneAddress == "" {
+		return errors.New("controlPlaneAddress is mandatory in kubernetes mode")
+	}
 	return nil
 }
 

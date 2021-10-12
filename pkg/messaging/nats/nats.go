@@ -233,6 +233,9 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 		if err != nil {
 			klog.ErrorS(err, "Error unmarshaling message")
 		}
+		if msg.Id == "" {
+			msg.Id = strconv.FormatUint(natsMsg.Sequence, 10)
+		}
 
 		err = handler(context.Background(), &msg)
 		if err == nil {

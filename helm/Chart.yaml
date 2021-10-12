@@ -7,3 +7,6 @@ dependencies:
   - name: rusi_sidecar_injector
     version: "0.0.1"
     repository: "file://rusi_sidecar_injector"
+  - name: rusi_operator
+    version: "0.0.1"
+    repository: "file://rusi_operator"

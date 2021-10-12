@@ -8,7 +8,6 @@ import (
 	grpc_api "rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
-	"rusi/pkg/kube"
 	"rusi/pkg/modes"
 	"rusi/pkg/operator"
 	"rusi/pkg/runtime"
@@ -19,7 +18,6 @@ func main() {
 
 	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
-	kube.InitFlags(nil)
 	defer klog.Flush()
 
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
@@ -33,8 +31,8 @@ func main() {
 	compLoader := components_loader.LoadLocalComponents(cfg.ComponentsPath)
 	configLoader := configuration_loader.LoadStandaloneConfiguration
 	if cfg.Mode == modes.KubernetesMode {
-		compLoader = operator.ListComponents
-		configLoader = operator.GetConfiguration
+		compLoader = operator.GetComponentsWatcher(cfg.ControlPlaneAddress)
+		configLoader = operator.GetConfigurationWatcher(cfg.ControlPlaneAddress)
 	}
 
 	configChan, err := configLoader(mainCtx, cfg.Config)

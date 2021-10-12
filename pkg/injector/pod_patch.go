@@ -40,6 +40,8 @@ const (
 	sidecarMetricsPortName            = "rusi-metrics"
 	sidecarDebugPortName              = "rusi-debug"
 	defaultLogLevel                   = "info"
+	apiAddress                        = "rusi-api"
+	apiPort                           = 80
 	kubernetesMountPath               = "/var/run/secrets/kubernetes.io/serviceaccount"
 	defaultConfig                     = "rusisystem"
 	defaultEnabledMetric              = true
@@ -95,8 +97,11 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 		return nil, err
 	}
 
+	apiSvcAddress := getServiceAddress(apiAddress, namespace, i.config.KubeClusterDomain, apiPort)
+
 	tokenMount := getTokenVolumeMount(pod)
-	sidecarContainer, err := getSidecarContainer(pod.Annotations, id, image, imagePullPolicy, req.Namespace, tokenMount)
+	sidecarContainer, err := getSidecarContainer(pod.Annotations, id, image, imagePullPolicy, req.Namespace,
+		apiSvcAddress, tokenMount)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +130,10 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 	patchOps = append(patchOps, envPatchOps...)
 
 	return patchOps, nil
+}
+
+func getServiceAddress(name, namespace, clusterDomain string, port int) string {
+	return fmt.Sprintf("%s.%s.svc.%s:%d", name, namespace, clusterDomain, port)
 }
 
 // This function add Rusi environment variables to all the containers in any Rusi enabled pod.
@@ -340,7 +349,7 @@ func getPullPolicy(pullPolicy string) corev1.PullPolicy {
 }
 
 func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, imagePullPolicy,
-	namespace string, tokenVolumeMount *corev1.VolumeMount) (*corev1.Container, error) {
+	namespace, controlPlaneAddress string, tokenVolumeMount *corev1.VolumeMount) (*corev1.Container, error) {
 
 	pullPolicy := getPullPolicy(imagePullPolicy)
 	allowPrivilegeEscalation := false
@@ -358,6 +367,7 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 		"--rusi-grpc-port", fmt.Sprintf("%v", sidecarAPIGRPCPort),
 		"--app-id", id,
 		"--mode", "kubernetes",
+		"--control-plane-address", controlPlaneAddress,
 		"--config", getConfig(annotations),
 	}
 
