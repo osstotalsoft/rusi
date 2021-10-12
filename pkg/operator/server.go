@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"rusi/pkg/custom-resource/components"
 	compv1 "rusi/pkg/operator/apis/components/v1alpha1"
 	configv1 "rusi/pkg/operator/apis/configuration/v1alpha1"
@@ -61,6 +62,7 @@ func listComponents(ctx context.Context, client *versioned.Clientset, namespace 
 	}
 	go func() {
 		for conf := range watcher.ResultChan() {
+			klog.V(4).InfoS("received component", conf)
 			item := conf.Object.(*compv1.Component)
 			c <- components.Spec{
 				Name:     item.Name,
@@ -84,6 +86,7 @@ func listConfiguration(ctx context.Context, client *versioned.Clientset, name st
 
 	go func() {
 		for conf := range watcher.ResultChan() {
+			klog.V(4).InfoS("received configuration", conf)
 			obj := conf.Object.(*configv1.Configuration)
 			if obj.Name != name {
 				continue
