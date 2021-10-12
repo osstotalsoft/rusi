@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package rusi.proto.operator.v1;
+
+option go_package = "pkg/proto/operator/v1";
+
+service RusiOperator {
+  rpc WatchConfiguration(WatchConfigurationRequest) returns (stream GenericItem);
+  rpc WatchComponents(WatchComponentsRequest) returns (stream GenericItem);
+}
+
+message WatchConfigurationRequest {
+  string config_name = 1;
+  string namespace = 2;
+}
+message WatchComponentsRequest {
+  string namespace = 1;
+}
+message GenericItem {
+  bytes data = 1;
+}

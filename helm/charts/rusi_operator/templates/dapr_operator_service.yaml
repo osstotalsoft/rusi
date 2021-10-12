@@ -1,0 +1,11 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: rusi-api
+spec:
+  selector:
+    app: rusi-operator
+  ports:
+  - protocol: TCP
+    port: {{ .Values.ports.port }} 
+    targetPort: {{ .Values.ports.targetPort }}  
