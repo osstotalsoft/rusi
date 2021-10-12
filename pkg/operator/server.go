@@ -62,7 +62,7 @@ func listComponents(ctx context.Context, client *versioned.Clientset, namespace 
 	}
 	go func() {
 		for conf := range watcher.ResultChan() {
-			klog.V(4).InfoS("received component", conf)
+			klog.V(4).InfoS("received component", conf.Object)
 			item := conf.Object.(*compv1.Component)
 			c <- components.Spec{
 				Name:     item.Name,
@@ -86,7 +86,7 @@ func listConfiguration(ctx context.Context, client *versioned.Clientset, name st
 
 	go func() {
 		for conf := range watcher.ResultChan() {
-			klog.V(4).InfoS("received configuration", conf)
+			klog.V(4).InfoS("received configuration", conf.Object)
 			obj := conf.Object.(*configv1.Configuration)
 			if obj.Name != name {
 				continue

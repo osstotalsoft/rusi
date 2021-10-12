@@ -54,6 +54,7 @@ func GetComponentsWatcher(address string) func(context.Context) (<-chan componen
 				}
 				if err != nil {
 					//reconnect <- true
+					klog.ErrorS(err, "watch components grpc stream lost")
 					break
 				}
 				spec := components.Spec{}
@@ -78,14 +79,21 @@ func GetConfigurationWatcher(address string) func(context.Context, string) (<-ch
 			return nil, err
 		}
 		namespace := kube.GetCurrentNamespace()
-		stream, err := client.WatchComponents(ctx, &operatorv1.WatchComponentsRequest{Namespace: namespace})
+		stream, err := client.WatchConfiguration(ctx, &operatorv1.WatchConfigurationRequest{
+			ConfigName: name, Namespace: namespace})
+
 		if err != nil {
 			return nil, err
 		}
 		go func() {
 			for {
 				msg, err := stream.Recv()
+				if err == io.EOF {
+					//done <- true
+					break
+				}
 				if err != nil {
+					klog.ErrorS(err, "watch configuration grpc stream lost")
 					break
 				}
 				spec := configuration.Spec{}
