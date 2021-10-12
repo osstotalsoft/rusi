@@ -1,4 +1,4 @@
-logLevel: info
+logLevel: 4
 
 # Specify full docker image name including registry url to use the custom side car image
 # Otherwise, helm chart will use {{ .Values.global.registry }}/rusid:{{ .Values.global.tag }}

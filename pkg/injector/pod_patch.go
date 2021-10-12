@@ -39,7 +39,7 @@ const (
 	sidecarGRPCPortName               = "rusi-grpc"
 	sidecarMetricsPortName            = "rusi-metrics"
 	sidecarDebugPortName              = "rusi-debug"
-	defaultLogLevel                   = "info"
+	defaultLogLevel                   = "2"
 	apiAddress                        = "rusi-api"
 	apiPort                           = 80
 	kubernetesMountPath               = "/var/run/secrets/kubernetes.io/serviceaccount"
@@ -367,6 +367,7 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 		"--rusi-grpc-port", fmt.Sprintf("%v", sidecarAPIGRPCPort),
 		"--app-id", id,
 		"--mode", "kubernetes",
+		"--v", getLogLevel(annotations),
 		"--control-plane-address", controlPlaneAddress,
 		"--config", getConfig(annotations),
 	}

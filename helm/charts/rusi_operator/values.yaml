@@ -1,3 +1,5 @@
+logLevel: 4
+
 # Specify full docker image name including registry url to use a custom operator service image
 # Otherwise, helm chart will use {{ .Values.global.registry }}/rusi:{{ .Values.global.tag }}
 image:

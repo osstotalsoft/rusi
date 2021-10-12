@@ -33,14 +33,12 @@ spec:
         image: "{{ .Values.global.registry }}/rusi:{{ .Values.global.tag }}"
 {{- end }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
-{{- if eq .Values.global.daprControlPlaneOs "linux" }}
         securityContext:
           runAsNonRoot: {{ .Values.runAsNonRoot }}
 {{- if eq .Values.debug.enabled true }}
           capabilities:
             add:
             - SYS_PTRACE
-{{- end }}
 {{- end }}
         env:
         - name: NAMESPACE
@@ -61,10 +59,6 @@ spec:
 {{- end }}
         resources:
 {{ toYaml .Values.resources | indent 10 }}
-        volumeMounts:
-          - name: credentials
-            mountPath: /var/run/rusi/credentials
-            readOnly: true
         command:
 {{- if eq .Values.debug.enabled false }}
         - "/operator"
@@ -82,18 +76,16 @@ spec:
         - "/operator"
         - "--"
 {{- end }}
+        - "--v"
+        - "{{ .Values.logLevel }}"
 {{- if eq .Values.global.prometheus.enabled true }}
         - "--enable-metrics"
         - "--metrics-port"
         - "{{ .Values.global.prometheus.port }}"
 {{- else }}
-        - "--enable-metrics=false"
+        #- "--enable-metrics=false"
 {{- end }}
       serviceAccountName: rusi-operator
-      volumes:
-        - name: credentials
-          secret:
-            secretName: rusi-trust-bundle
 {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.global.imagePullSecrets }}
