@@ -225,9 +225,6 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 	}
 
 	natsMsgHandler := func(natsMsg *stan.Msg) {
-		klog.InfoS("Processing NATS Streaming message", " subject", natsMsg.Subject,
-			"Sequence", natsMsg.Sequence)
-
 		msg := messaging.MessageEnvelope{}
 		err = serdes.Unmarshal(natsMsg.Data, &msg)
 		if err != nil {
@@ -236,6 +233,8 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 		if msg.Id == "" {
 			msg.Id = strconv.FormatUint(natsMsg.Sequence, 10)
 		}
+		klog.InfoS("Processing NATS Streaming message", "topic", natsMsg.Subject,
+			"Id", msg.Id)
 
 		err = handler(context.Background(), &msg)
 		if err == nil {
@@ -260,10 +259,13 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 	if mergedOptions.subscriptionType == subscriptionTypeTopic {
 		klog.Infof("nats: subscribed to subject %s", topic)
 	} else if mergedOptions.subscriptionType == subscriptionTypeQueueGroup {
-		klog.Infof("nats: subscribed to subject %s with queue group %s", topic, mergedOptions.natsQueueGroupName)
+		klog.Infof("nats: subscribed to topic %s with queue group %s", topic, mergedOptions.natsQueueGroupName)
 	}
 
-	return subs.Close, nil
+	return func() error {
+		klog.Infof("nats: unsubscribed from topic %s", topic)
+		return subs.Close()
+	}, nil
 }
 
 func stanSubscriptionOptions(opts options) ([]stan.SubscriptionOption, error) {

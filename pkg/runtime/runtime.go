@@ -64,26 +64,26 @@ func (rt *runtime) watchConfigurationUpdates() {
 		if reflect.DeepEqual(rt.appConfig, update) {
 			return
 		}
-		klog.V(4).InfoS("configuration changed",
-			"old config", rt.appConfig, "new config", update)
+		klog.InfoS("configuration changed")
+		klog.V(4).InfoS("configuration changed", "old config", rt.appConfig, "new config", update)
 		rt.appConfig = update
 		err := rt.api.Refresh()
 		if err != nil {
-			klog.V(4).ErrorS(err, "error refreshing subscription")
+			klog.ErrorS(err, "error refreshing subscription")
 		}
 	}
 }
 
 func (rt *runtime) watchComponentsUpdates() {
 	for update := range rt.componentsManager.Watch() {
-		klog.V(4).InfoS("component changed", "operation", update.Operation,
+		klog.InfoS("component changed", "operation", update.Operation,
 			"name", update.ComponentSpec.Name, "type", update.ComponentSpec.Type)
 
 		switch {
 		case update.ComponentCategory == components.PubsubComponent && update.Operation == components.Update:
 			err := rt.api.Refresh()
 			if err != nil {
-				klog.V(4).ErrorS(err, "error refreshing subscription")
+				klog.ErrorS(err, "error refreshing subscription")
 			}
 		}
 	}
