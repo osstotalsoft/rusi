@@ -76,7 +76,6 @@ func listComponents(ctx context.Context, client *versioned.Clientset, namespace 
 				Scopes:   item.Scopes,
 			}
 		}
-		close(c)
 	}()
 	return c, nil
 }
