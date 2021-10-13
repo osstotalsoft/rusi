@@ -113,7 +113,7 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 	handler := srv.buildSubscribeHandler(subscribeServer)
 	for {
 		hCtx, hCancel := context.WithCancel(ctx)
-		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
+		_, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
 			PubsubName: request.GetPubsubName(),
 			Topic:      request.GetTopic(),
 			Handler:    handler(hCtx),
@@ -135,11 +135,8 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
 		}
 		hCancel()
-		err = unsub()
-		if err != nil {
-			klog.V(4).ErrorS(err, "error unsubscribing")
-			return err
-		}
+		//pubsub was already closed
+		//unsub()
 		if exit {
 			srv.removeRefreshChan(refreshChan)
 			return ctx.Err()
