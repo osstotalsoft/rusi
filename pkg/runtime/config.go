@@ -18,7 +18,6 @@ const (
 type ConfigBuilder struct {
 	mode                string
 	rusiGRPCPort        string
-	appPort             string
 	componentsPath      string
 	config              string
 	controlPlaneAddress string
@@ -29,7 +28,6 @@ type ConfigBuilder struct {
 type Config struct {
 	Mode                modes.RusiMode
 	RusiGRPCPort        string
-	AppPort             string
 	ComponentsPath      string
 	Config              string
 	ControlPlaneAddress string
@@ -47,7 +45,6 @@ func (c *ConfigBuilder) AttachCmdFlags(
 
 	stringVar(&c.mode, "mode", string(modes.StandaloneMode), "Runtime mode for Rusi (kubernetes / standalone - default:standalone )")
 	stringVar(&c.rusiGRPCPort, "rusi-grpc-port", fmt.Sprintf("%v", DefaultGRPCPort), "gRPC port for the Rusi API to listen on")
-	stringVar(&c.appPort, "app-port", "", "The port the application is listening on")
 	stringVar(&c.componentsPath, "components-path", "", "Path for components directory. If empty, components will not be loaded. Self-hosted mode only")
 	stringVar(&c.config, "config", "", "Path to config file, or name of a configuration object")
 	stringVar(&c.controlPlaneAddress, "control-plane-address", "", "Address for Rusi control plane")
@@ -62,9 +59,7 @@ func (c *ConfigBuilder) Build() (Config, error) {
 	}
 
 	variables := map[string]string{
-		custom_resource.AppID:   c.appID,
-		custom_resource.AppPort: c.appPort,
-		//custom_resource.HostAddress:     host,
+		custom_resource.AppID:        c.appID,
 		custom_resource.RusiGRPCPort: c.rusiGRPCPort,
 		//custom_resource.RusiMetricsPort: metricsExporter.Options().Port,
 		//custom_resource.RusiProfilePort: c.profilePort,
@@ -77,7 +72,6 @@ func (c *ConfigBuilder) Build() (Config, error) {
 	return Config{
 		Mode:                modes.RusiMode(c.mode),
 		RusiGRPCPort:        c.rusiGRPCPort,
-		AppPort:             c.appPort,
 		ComponentsPath:      c.componentsPath,
 		Config:              c.config,
 		AppID:               c.appID,

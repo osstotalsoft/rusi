@@ -19,8 +19,8 @@ type operatorServer struct {
 	client *versioned.Clientset
 }
 
-func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigurationRequest, server operatorv1.RusiOperator_WatchConfigurationServer) error {
-	c, err := listConfiguration(server.Context(), opsrv.client, request.ConfigName, request.Namespace)
+func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigurationRequest, stream operatorv1.RusiOperator_WatchConfigurationServer) error {
+	c, err := listConfiguration(stream.Context(), opsrv.client, request.ConfigName, request.Namespace)
 	if err != nil {
 		return err
 	}
@@ -28,17 +28,17 @@ func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigu
 		select {
 		case data := <-c:
 			b, _ := json.Marshal(data)
-			server.Send(&operatorv1.GenericItem{
+			stream.Send(&operatorv1.GenericItem{
 				Data: b,
 			})
-		case <-server.Context().Done():
+		case <-stream.Context().Done():
 			return nil
 		}
 	}
 }
 
-func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponentsRequest, server operatorv1.RusiOperator_WatchComponentsServer) error {
-	c, err := listComponents(server.Context(), opsrv.client, request.Namespace)
+func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponentsRequest, stream operatorv1.RusiOperator_WatchComponentsServer) error {
+	c, err := listComponents(stream.Context(), opsrv.client, request.Namespace)
 	if err != nil {
 		return err
 	}
@@ -46,10 +46,10 @@ func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponents
 		select {
 		case data := <-c:
 			b, _ := json.Marshal(data)
-			server.Send(&operatorv1.GenericItem{
+			stream.Send(&operatorv1.GenericItem{
 				Data: b,
 			})
-		case <-server.Context().Done():
+		case <-stream.Context().Done():
 			return nil
 		}
 	}
