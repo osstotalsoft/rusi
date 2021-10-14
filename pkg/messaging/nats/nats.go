@@ -54,6 +54,7 @@ const (
 type natsStreamingPubSub struct {
 	options          options
 	natStreamingConn stan.Conn
+	closed           bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -175,6 +176,7 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 	natStreamingConn, err := stan.Connect(m.natsStreamingClusterID, clientID, stan.NatsURL(m.natsURL),
 		stan.SetConnectionLostHandler(func(conn stan.Conn, err error) {
 			klog.ErrorS(err, "connection lost")
+			n.closed = true
 		}))
 
 	if err != nil {
@@ -190,6 +192,7 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 	})
 	n.natStreamingConn.NatsConn().SetClosedHandler(func(conn *nats.Conn) {
 		klog.Info("SetClosedHandler")
+		n.closed = true
 	})
 	n.natStreamingConn.NatsConn().SetDisconnectErrHandler(func(conn *nats.Conn, err error) {
 		klog.ErrorS(err, "SetDisconnectErrHandler")
@@ -327,6 +330,10 @@ func genRandomString(n int) string {
 func (n *natsStreamingPubSub) Close() error {
 	n.cancel()
 	return n.natStreamingConn.Close()
+}
+
+func (n *natsStreamingPubSub) IsAlive() bool {
+	return !n.closed
 }
 
 func mergeGlobalAndSubscriptionOptions(globalOptions options, subscriptionOptions *messaging.SubscriptionOptions) (options, error) {
