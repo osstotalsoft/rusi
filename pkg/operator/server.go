@@ -1,44 +1,33 @@
 package operator
 
 import (
-	"encoding/json"
-	"errors"
 	"github.com/google/uuid"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
+	jsoniter "github.com/json-iterator/go"
 	"k8s.io/klog/v2"
 	"rusi/pkg/custom-resource/components"
 	compv1 "rusi/pkg/operator/apis/components/v1alpha1"
 	configv1 "rusi/pkg/operator/apis/configuration/v1alpha1"
-	"rusi/pkg/operator/client/clientset/versioned"
 	operatorv1 "rusi/pkg/proto/operator/v1"
 	"strings"
 )
 
 type operatorServer struct {
-	client *versioned.Clientset
+	ow *objectWatcher
 }
 
 func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigurationRequest, stream operatorv1.RusiOperator_WatchConfigurationServer) error {
-	watcher, err := opsrv.client.ConfigurationV1alpha1().Configurations(request.Namespace).Watch(stream.Context(), v1.ListOptions{})
-	if err != nil {
-		return err
-	}
+	c := make(chan configv1.Configuration)
+	opsrv.ow.addConfigurationListener(c)
+	defer opsrv.ow.removeConfigurationListener(c)
+
 	for {
 		select {
-		case event, ok := <-watcher.ResultChan():
-			if !ok {
-				return errors.New("kubernetes configuration watcher closed")
-			}
-			klog.V(4).InfoS("received configuration", "event", event.Type, "object", event.Object)
-			if event.Type != watch.Error {
-				obj := event.Object.(*configv1.Configuration)
-				if obj.Name == request.ConfigName {
-					b, _ := json.Marshal(obj.Spec)
-					stream.Send(&operatorv1.GenericItem{
-						Data: b,
-					})
-				}
+		case obj := <-c:
+			if obj.Namespace == request.Namespace && obj.Name == request.ConfigName {
+				b, _ := jsoniter.Marshal(obj.Spec)
+				stream.Send(&operatorv1.GenericItem{
+					Data: b,
+				})
 			}
 		case <-stream.Context().Done():
 			klog.V(4).ErrorS(stream.Context().Err(), "grpc WatchConfiguration stream closed")
@@ -48,19 +37,15 @@ func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigu
 }
 
 func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponentsRequest, stream operatorv1.RusiOperator_WatchComponentsServer) error {
-	watcher, err := opsrv.client.ComponentsV1alpha1().Components(request.Namespace).Watch(stream.Context(), v1.ListOptions{})
-	if err != nil {
-		return err
-	}
+	c := make(chan compv1.Component)
+	opsrv.ow.addComponentListener(c)
+	defer opsrv.ow.removeComponentListener(c)
+
 	for {
 		select {
-		case event, ok := <-watcher.ResultChan():
-			if !ok {
-				return errors.New("kubernetes components watcher closed")
-			}
-			klog.V(4).InfoS("received component", "event", event.Type, "object", event.Object)
-			if event.Type != watch.Error {
-				b, _ := json.Marshal(convertToComponent(event))
+		case obj := <-c:
+			if obj.Namespace == request.Namespace {
+				b, _ := jsoniter.Marshal(convertToComponent(obj))
 				stream.Send(&operatorv1.GenericItem{
 					Data: b,
 				})
@@ -71,8 +56,8 @@ func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponents
 		}
 	}
 }
-func convertToComponent(event watch.Event) components.Spec {
-	item := event.Object.(*compv1.Component)
+
+func convertToComponent(item compv1.Component) components.Spec {
 	return components.Spec{
 		Name:     item.Name,
 		Type:     item.Spec.Type,

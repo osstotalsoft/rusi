@@ -2,7 +2,7 @@ package operator
 
 import (
 	"context"
-	"encoding/json"
+	jsoniter "github.com/json-iterator/go"
 	"google.golang.org/grpc"
 	"io"
 	"k8s.io/klog/v2"
@@ -59,7 +59,7 @@ func GetComponentsWatcher(address string) func(context.Context) (<-chan componen
 					break
 				}
 				spec := components.Spec{}
-				err = json.Unmarshal(msg.Data, &spec)
+				err = jsoniter.Unmarshal(msg.Data, &spec)
 				if err != nil {
 					klog.ErrorS(err, "unable to Unmarshal operator data ")
 				}
@@ -100,7 +100,7 @@ func GetConfigurationWatcher(address string) func(context.Context, string) (<-ch
 					break
 				}
 				spec := configuration.Spec{}
-				err = json.Unmarshal(msg.Data, &spec)
+				err = jsoniter.Unmarshal(msg.Data, &spec)
 				if err != nil {
 					klog.ErrorS(err, "unable to Unmarshal operator data ")
 				}
