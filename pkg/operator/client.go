@@ -50,7 +50,7 @@ func GetComponentsWatcher(address string) func(context.Context) (<-chan componen
 				msg, err := stream.Recv()
 				if err == io.EOF {
 					//done <- true
-					klog.V(4).Info("watch components grpc stream EOF")
+					klog.Warning("watch components grpc stream EOF")
 					break
 				}
 				if err != nil {
@@ -65,6 +65,7 @@ func GetComponentsWatcher(address string) func(context.Context) (<-chan componen
 				}
 				c <- spec
 			}
+			klog.Warning("watch components grpc stream closed")
 			close(c)
 			conn.Close()
 		}()
@@ -91,7 +92,7 @@ func GetConfigurationWatcher(address string) func(context.Context, string) (<-ch
 				msg, err := stream.Recv()
 				if err == io.EOF {
 					//done <- true
-					klog.V(4).Info("watch configuration grpc stream EOF")
+					klog.Warning("watch configuration grpc stream EOF")
 					break
 				}
 				if err != nil {
@@ -105,6 +106,7 @@ func GetConfigurationWatcher(address string) func(context.Context, string) (<-ch
 				}
 				c <- spec
 			}
+			klog.Warning("watch configuration grpc stream closed")
 			close(c)
 			conn.Close()
 		}()

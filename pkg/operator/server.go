@@ -1,8 +1,8 @@
 package operator
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"github.com/google/uuid"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -20,88 +20,66 @@ type operatorServer struct {
 }
 
 func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigurationRequest, stream operatorv1.RusiOperator_WatchConfigurationServer) error {
-	c, err := listConfiguration(stream.Context(), opsrv.client, request.ConfigName, request.Namespace)
+	watcher, err := opsrv.client.ConfigurationV1alpha1().Configurations(request.Namespace).Watch(stream.Context(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for {
 		select {
-		case data := <-c:
-			b, _ := json.Marshal(data)
-			stream.Send(&operatorv1.GenericItem{
-				Data: b,
-			})
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				return errors.New("kubernetes configuration watcher closed")
+			}
+			klog.V(4).InfoS("received configuration", "event", event.Type, "object", event.Object)
+			if event.Type != watch.Error {
+				obj := event.Object.(*configv1.Configuration)
+				if obj.Name == request.ConfigName {
+					b, _ := json.Marshal(obj.Spec)
+					stream.Send(&operatorv1.GenericItem{
+						Data: b,
+					})
+				}
+			}
 		case <-stream.Context().Done():
+			klog.V(4).ErrorS(stream.Context().Err(), "grpc WatchConfiguration stream closed")
 			return nil
 		}
 	}
 }
 
 func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponentsRequest, stream operatorv1.RusiOperator_WatchComponentsServer) error {
-	c, err := listComponents(stream.Context(), opsrv.client, request.Namespace)
+	watcher, err := opsrv.client.ComponentsV1alpha1().Components(request.Namespace).Watch(stream.Context(), v1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for {
 		select {
-		case data := <-c:
-			b, _ := json.Marshal(data)
-			stream.Send(&operatorv1.GenericItem{
-				Data: b,
-			})
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				return errors.New("kubernetes components watcher closed")
+			}
+			klog.V(4).InfoS("received component", "event", event.Type, "object", event.Object)
+			if event.Type != watch.Error {
+				b, _ := json.Marshal(convertToComponent(event))
+				stream.Send(&operatorv1.GenericItem{
+					Data: b,
+				})
+			}
 		case <-stream.Context().Done():
+			klog.V(4).ErrorS(stream.Context().Err(), "grpc WatchComponents stream closed")
 			return nil
 		}
 	}
 }
-
-func listComponents(ctx context.Context, client *versioned.Clientset, namespace string) (<-chan components.Spec, error) {
-	c := make(chan components.Spec)
-	watcher, err := client.ComponentsV1alpha1().Components(namespace).Watch(ctx, v1.ListOptions{})
-	if err != nil {
-		return c, err
+func convertToComponent(event watch.Event) components.Spec {
+	item := event.Object.(*compv1.Component)
+	return components.Spec{
+		Name:     item.Name,
+		Type:     item.Spec.Type,
+		Version:  item.Spec.Version,
+		Metadata: convertMetadataItemsToProperties(item.Spec.Metadata),
+		Scopes:   item.Scopes,
 	}
-	go func() {
-		for conf := range watcher.ResultChan() {
-			klog.V(4).InfoS("received component", "event", conf.Type, "object", conf.Object)
-			if conf.Type == watch.Error {
-				continue
-			}
-			item := conf.Object.(*compv1.Component)
-			c <- components.Spec{
-				Name:     item.Name,
-				Type:     item.Spec.Type,
-				Version:  item.Spec.Version,
-				Metadata: convertMetadataItemsToProperties(item.Spec.Metadata),
-				Scopes:   item.Scopes,
-			}
-		}
-	}()
-	return c, nil
-}
-
-func listConfiguration(ctx context.Context, client *versioned.Clientset, name string, namespace string) (<-chan configv1.ConfigurationSpec, error) {
-	c := make(chan configv1.ConfigurationSpec)
-	watcher, err := client.ConfigurationV1alpha1().Configurations(namespace).Watch(ctx, v1.ListOptions{})
-	if err != nil {
-		return c, err
-	}
-
-	go func() {
-		for conf := range watcher.ResultChan() {
-			klog.V(4).InfoS("received configuration", "event", conf.Type, "object", conf.Object)
-			if conf.Type == watch.Error {
-				continue
-			}
-			obj := conf.Object.(*configv1.Configuration)
-			if obj.Name != name {
-				continue
-			}
-			c <- obj.Spec
-		}
-	}()
-
-	return c, err
 }
 
 func convertMetadataItemsToProperties(items []compv1.MetadataItem) map[string]string {
