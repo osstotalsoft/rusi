@@ -236,17 +236,19 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 		if msg.Id == "" {
 			msg.Id = strconv.FormatUint(natsMsg.Sequence, 10)
 		}
-		klog.InfoS("Processing NATS Streaming message", "topic", natsMsg.Subject,
-			"Id", msg.Id)
+		klog.InfoS("Received message", "topic", natsMsg.Subject, "Id", msg.Id)
 
-		err = handler(context.Background(), &msg)
-		if err == nil {
-			// we only send a successful ACK if there is no error
-			natsMsg.Ack()
-			klog.V(4).InfoS("Message manually acknowledged in NATS")
-		} else {
-			klog.ErrorS(err, "Error running subscriber pipeline")
-		}
+		//run handler concurrently
+		go func() {
+			err = handler(context.Background(), &msg)
+			if err == nil {
+				// we only send a successful ACK if there is no error
+				natsMsg.Ack()
+				klog.V(4).InfoS("Message manually acknowledged in NATS")
+			} else {
+				klog.ErrorS(err, "Error running subscriber pipeline, message was not ACK")
+			}
+		}()
 	}
 
 	var subs stan.Subscription
