@@ -128,8 +128,14 @@ func (m *ComponentsManager) initPubSub(spec components.Spec) error {
 		return err
 	}
 
-	spec.Metadata["consumerID"] = m.appId
-	err = pubSub.Init(spec.Metadata)
+	//clone the metadata
+	metadata := make(map[string]string)
+	for index, element := range spec.Metadata {
+		metadata[index] = element
+	}
+
+	metadata["consumerID"] = m.appId
+	err = pubSub.Init(metadata)
 	if err != nil {
 		klog.Warningf("error initializing pub sub %s/%s: %s", spec.Type, spec.Version, err)
 		return err
@@ -141,6 +147,7 @@ func (m *ComponentsManager) initPubSub(spec components.Spec) error {
 
 	return nil
 }
+
 func (m *ComponentsManager) getComponent(componentType string, name string) (components.Spec, bool) {
 	m.mux.RLock()
 	defer m.mux.RUnlock()
