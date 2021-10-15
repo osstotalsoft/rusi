@@ -336,12 +336,16 @@ func (n *natsStreamingPubSub) Close() error {
 }
 
 func (n *natsStreamingPubSub) IsHealthy() healthcheck.HealthResult {
-	if n.closed {
+	if n.closed ||
+		n.natStreamingConn == nil ||
+		n.natStreamingConn.NatsConn() == nil ||
+		n.natStreamingConn.NatsConn().Status() != nats.CONNECTED {
 		return healthcheck.HealthResult{
 			Status:      healthcheck.Unhealthy,
 			Description: "nats pubsub connection is closed",
 		}
 	}
+
 	return healthcheck.HealthyResult
 }
 
