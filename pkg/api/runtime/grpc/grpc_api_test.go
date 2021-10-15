@@ -169,8 +169,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			return err
 		}, "timeout waiting for receiving message on stream")
 		assert.NoError(t, err)
-		server.Refresh()
-		//wait for refresh
+		err = wait(func() error {
+			return server.Refresh()
+		}, "timeout waiting for server refresh")
+		assert.NoError(t, err)
 		err = waitInLoop(func() bool {
 			return store.GetSubscribersCount(topic) == 1
 		})
@@ -217,7 +219,10 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		assert.NoError(t, err, "subscribers count does not match")
 		go client.Publish(ctx, pubRequest)
 		time.Sleep(100 * time.Millisecond)
-		server.Refresh()
+		err = wait(func() error {
+			return server.Refresh()
+		}, "timeout waiting for server refresh")
+		assert.NoError(t, err)
 		err = waitInLoop(func() bool {
 			return store.GetSubscribersCount(topic) == 1
 		})
@@ -280,8 +285,11 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		})
 		assert.NoError(t, err, "subscribers count does not match")
 		go client.Publish(ctx, pubRequest)
-		server.Refresh()
-		//wait for refresh
+
+		err = wait(func() error {
+			return server.Refresh()
+		}, "timeout waiting for server refresh")
+		assert.NoError(t, err)
 		err = waitInLoop(func() bool {
 			return store.GetSubscribersCount(topic) == 1
 		})
