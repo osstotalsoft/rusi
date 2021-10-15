@@ -18,7 +18,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func NewGrpcAPI(port string, serverOptions ...grpc.ServerOption) runtime.Api {
+func NewGrpcAPI(port int, serverOptions ...grpc.ServerOption) runtime.Api {
 
 	srv := &rusiServerImpl{
 		refreshChannels:  []chan bool{},
@@ -29,7 +29,7 @@ func NewGrpcAPI(port string, serverOptions ...grpc.ServerOption) runtime.Api {
 }
 
 type grpcApi struct {
-	port          string
+	port          int
 	server        *rusiServerImpl
 	serverOptions []grpc.ServerOption
 }
@@ -48,7 +48,7 @@ func (srv *grpcApi) Serve() error {
 	grpcServer := grpc.NewServer(srv.serverOptions...)
 	v1.RegisterRusiServer(grpcServer, srv.server)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%s", srv.port))
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%v", srv.port))
 	if err != nil {
 		klog.Fatalf("failed to listen: %v", err)
 	}

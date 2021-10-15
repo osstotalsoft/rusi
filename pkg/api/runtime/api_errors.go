@@ -1,7 +1,6 @@
 package runtime
 
 const (
-	// PubSub.
 	ErrPubsubNotConfigured      = "no pubsub is configured"
 	ErrPubsubEmpty              = "pubsub name is empty"
 	ErrPubsubNotFound           = "pubsub %s not found"

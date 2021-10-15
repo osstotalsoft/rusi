@@ -18,42 +18,51 @@ import (
 )
 
 const (
-	sidecarContainerName              = "rusid"
-	rusiEnabledKey                    = "rusi.io/enabled"
-	rusiConfigKey                     = "rusi.io/config"
-	appIDKey                          = "rusi.io/app-id"
-	rusiLogLevel                      = "rusi.io/log-level"
-	rusiEnableMetricsKey              = "rusi.io/enable-metrics"
-	rusiMetricsPortKey                = "rusi.io/metrics-port"
-	rusiEnableDebugKey                = "rusi.io/enable-debug"
-	rusiDebugPortKey                  = "rusi.io/debug-port"
-	rusiEnvKey                        = "rusi.io/env"
-	rusiCPULimitKey                   = "rusi.io/sidecar-cpu-limit"
-	rusiMemoryLimitKey                = "rusi.io/sidecar-memory-limit"
-	rusiCPURequestKey                 = "rusi.io/sidecar-cpu-request"
-	rusiMemoryRequestKey              = "rusi.io/sidecar-memory-request"
-	containersPath                    = "/spec/containers"
-	sidecarHTTPPort                   = 3500
-	sidecarAPIGRPCPort                = 50003
-	userContainerRusiGRPCPortName     = "RUSI_GRPC_PORT"
-	sidecarGRPCPortName               = "rusi-grpc"
-	sidecarMetricsPortName            = "rusi-metrics"
-	sidecarDebugPortName              = "rusi-debug"
-	defaultLogLevel                   = "2"
-	apiAddress                        = "rusi-api"
-	apiPort                           = 80
-	kubernetesMountPath               = "/var/run/secrets/kubernetes.io/serviceaccount"
-	defaultConfig                     = "rusisystem"
-	defaultEnabledMetric              = true
-	defaultMetricsPort                = 9090
-	defaultSidecarDebug               = false
-	defaultSidecarDebugPort           = 40000
+	sidecarContainerName           = "rusid"
+	rusiEnabledKey                 = "rusi.io/enabled"
+	rusiConfigKey                  = "rusi.io/config"
+	appIDKey                       = "rusi.io/app-id"
+	rusiLogLevel                   = "rusi.io/log-level"
+	rusiEnableMetricsKey           = "rusi.io/enable-metrics"
+	rusiMetricsPortKey             = "rusi.io/metrics-port"
+	rusiEnableDebugKey             = "rusi.io/enable-debug"
+	rusiDebugPortKey               = "rusi.io/debug-port"
+	rusiEnvKey                     = "rusi.io/env"
+	rusiCPULimitKey                = "rusi.io/sidecar-cpu-limit"
+	rusiMemoryLimitKey             = "rusi.io/sidecar-memory-limit"
+	rusiCPURequestKey              = "rusi.io/sidecar-cpu-request"
+	rusiMemoryRequestKey           = "rusi.io/sidecar-memory-request"
+	rusiLivenessProbeDelayKey      = "rusi.io/sidecar-liveness-probe-delay-seconds"
+	rusiLivenessProbeTimeoutKey    = "rusi.io/sidecar-liveness-probe-timeout-seconds"
+	rusiLivenessProbePeriodKey     = "rusi.io/sidecar-liveness-probe-period-seconds"
+	rusiLivenessProbeThresholdKey  = "rusi.io/sidecar-liveness-probe-threshold"
+	rusiReadinessProbeDelayKey     = "rusi.io/sidecar-readiness-probe-delay-seconds"
+	rusiReadinessProbeTimeoutKey   = "rusi.io/sidecar-readiness-probe-timeout-seconds"
+	rusiReadinessProbePeriodKey    = "rusi.io/sidecar-readiness-probe-period-seconds"
+	rusiReadinessProbeThresholdKey = "rusi.io/sidecar-readiness-probe-threshold"
+
+	containersPath                = "/spec/containers"
+	sidecarAPIGRPCPort            = 50003
+	userContainerRusiGRPCPortName = "RUSI_GRPC_PORT"
+	sidecarGRPCPortName           = "rusi-grpc"
+	sidecarMetricsPortName        = "rusi-metrics"
+	sidecarDebugPortName          = "rusi-debug"
+	defaultLogLevel               = "2"
+	apiAddress                    = "rusi-api"
+	apiPort                       = 80
+	kubernetesMountPath           = "/var/run/secrets/kubernetes.io/serviceaccount"
+	defaultConfig                 = "rusisystem"
+	defaultEnabledMetric          = true
+	defaultMetricsPort            = 9090
+	defaultSidecarDebug           = false
+	defaultSidecarDebugPort       = 40000
+
+	sidecarHealthzPort                = 8080
 	sidecarHealthzPath                = "healthz"
 	defaultHealthzProbeDelaySeconds   = 3
 	defaultHealthzProbeTimeoutSeconds = 3
 	defaultHealthzProbePeriodSeconds  = 6
 	defaultHealthzProbeThreshold      = 3
-	apiVersionV1                      = "v1.0"
 	trueString                        = "true"
 )
 
@@ -331,6 +340,10 @@ func getResourceRequirements(annotations map[string]string) (*corev1.ResourceReq
 	return nil, nil
 }
 
+func getMetricsPort(annotations map[string]string) int {
+	return int(getInt32AnnotationOrDefault(annotations, rusiMetricsPortKey, defaultMetricsPort))
+}
+
 func isResourceRusiEnabled(annotations map[string]string) bool {
 	return getBoolAnnotationOrDefault(annotations, rusiEnabledKey, false)
 }
@@ -351,13 +364,23 @@ func getPullPolicy(pullPolicy string) corev1.PullPolicy {
 func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, imagePullPolicy,
 	namespace, controlPlaneAddress string, tokenVolumeMount *corev1.VolumeMount) (*corev1.Container, error) {
 
+	metricsPort := getMetricsPort(annotations)
 	pullPolicy := getPullPolicy(imagePullPolicy)
+	httpHandler := getProbeHTTPHandler(sidecarHealthzPort, sidecarHealthzPath)
+
 	allowPrivilegeEscalation := false
 
 	ports := []corev1.ContainerPort{
 		{
 			ContainerPort: int32(sidecarAPIGRPCPort),
 			Name:          sidecarGRPCPortName,
+		},
+		{
+			ContainerPort: int32(metricsPort),
+			Name:          sidecarMetricsPortName,
+		},
+		{
+			ContainerPort: sidecarHealthzPort,
 		},
 	}
 
@@ -410,6 +433,20 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 			},
 		},
 		Args: args,
+		ReadinessProbe: &corev1.Probe{
+			Handler:             httpHandler,
+			InitialDelaySeconds: getInt32AnnotationOrDefault(annotations, rusiReadinessProbeDelayKey, defaultHealthzProbeDelaySeconds),
+			TimeoutSeconds:      getInt32AnnotationOrDefault(annotations, rusiReadinessProbeTimeoutKey, defaultHealthzProbeTimeoutSeconds),
+			PeriodSeconds:       getInt32AnnotationOrDefault(annotations, rusiReadinessProbePeriodKey, defaultHealthzProbePeriodSeconds),
+			FailureThreshold:    getInt32AnnotationOrDefault(annotations, rusiReadinessProbeThresholdKey, defaultHealthzProbeThreshold),
+		},
+		LivenessProbe: &corev1.Probe{
+			Handler:             httpHandler,
+			InitialDelaySeconds: getInt32AnnotationOrDefault(annotations, rusiLivenessProbeDelayKey, defaultHealthzProbeDelaySeconds),
+			TimeoutSeconds:      getInt32AnnotationOrDefault(annotations, rusiLivenessProbeTimeoutKey, defaultHealthzProbeTimeoutSeconds),
+			PeriodSeconds:       getInt32AnnotationOrDefault(annotations, rusiLivenessProbePeriodKey, defaultHealthzProbePeriodSeconds),
+			FailureThreshold:    getInt32AnnotationOrDefault(annotations, rusiLivenessProbeThresholdKey, defaultHealthzProbeThreshold),
+		},
 	}
 	c.Env = append(c.Env, utils.ParseEnvString(annotations[rusiEnvKey])...)
 	if tokenVolumeMount != nil {

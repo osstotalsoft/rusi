@@ -11,6 +11,7 @@ import (
 	components_middleware "rusi/pkg/custom-resource/components/middleware"
 	"rusi/pkg/custom-resource/components/pubsub"
 	"rusi/pkg/custom-resource/configuration"
+	"rusi/pkg/healthcheck"
 	"rusi/pkg/messaging"
 	"strings"
 	"sync"
@@ -120,7 +121,6 @@ func (m *ComponentsManager) updatePubSub(spec components.Spec) (err error) {
 	}
 	return m.initPubSub(spec)
 }
-
 func (m *ComponentsManager) initPubSub(spec components.Spec) error {
 	pubSub, err := m.pubSubRegistry.Create(spec.Type, spec.Version)
 	if err != nil {
@@ -141,7 +141,6 @@ func (m *ComponentsManager) initPubSub(spec components.Spec) error {
 
 	return nil
 }
-
 func (m *ComponentsManager) getComponent(componentType string, name string) (components.Spec, bool) {
 	m.mux.RLock()
 	defer m.mux.RUnlock()
@@ -152,6 +151,7 @@ func (m *ComponentsManager) getComponent(componentType string, name string) (com
 	}
 	return components.Spec{}, false
 }
+
 func (m *ComponentsManager) GetMiddleware(middlewareSpec configuration.HandlerSpec) (messaging.Middleware, error) {
 	component, exists := m.getComponent(middlewareSpec.Type, middlewareSpec.Name)
 	if !exists {
@@ -166,29 +166,24 @@ func (m *ComponentsManager) GetMiddleware(middlewareSpec configuration.HandlerSp
 
 	return midlw, err
 }
-
 func (m *ComponentsManager) GetPublisher(pubsubName string) messaging.Publisher {
 	m.mux.RLock()
 	defer m.mux.RUnlock()
 	return m.pubSubInstances[pubsubName]
 }
-
 func (m *ComponentsManager) GetSubscriber(pubsubName string) messaging.Subscriber {
 	m.mux.RLock()
 	defer m.mux.RUnlock()
 	return m.pubSubInstances[pubsubName]
 }
-
 func (m *ComponentsManager) Watch() <-chan components.ChangeNotification {
 	return m.changeNotificationChan
 }
-
 func (m *ComponentsManager) storeComponent(spec components.Spec) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 	m.components[getComponentKey(spec.Type, spec.Name)] = spec
 }
-
 func (m *ComponentsManager) publishChange(category components.ComponentCategory,
 	operation components.Operation, spec components.Spec) {
 
@@ -210,4 +205,17 @@ func extractComponentCategory(spec components.Spec) components.ComponentCategory
 
 func getComponentKey(ctype, name string) string {
 	return fmt.Sprintf("%s-%s", ctype, name)
+}
+
+func (m *ComponentsManager) IsHealthy(ctx context.Context) healthcheck.HealthResult {
+	m.mux.RLock()
+	defer m.mux.RUnlock()
+	for _, ps := range m.pubSubInstances {
+		if hc, ok := ps.(healthcheck.HealthChecker); ok {
+			if r := hc.IsHealthy(ctx); r.Status != healthcheck.Healthy {
+				return r
+			}
+		}
+	}
+	return healthcheck.HealthyResult
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"math/rand"
+	"rusi/pkg/healthcheck"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	"strconv"
@@ -334,8 +335,14 @@ func (n *natsStreamingPubSub) Close() error {
 	return n.natStreamingConn.Close()
 }
 
-func (n *natsStreamingPubSub) IsAlive() bool {
-	return !n.closed
+func (n *natsStreamingPubSub) IsHealthy() healthcheck.HealthResult {
+	if n.closed {
+		return healthcheck.HealthResult{
+			Status:      healthcheck.Unhealthy,
+			Description: "nats pubsub connection is closed",
+		}
+	}
+	return healthcheck.HealthyResult
 }
 
 func mergeGlobalAndSubscriptionOptions(globalOptions options, subscriptionOptions *messaging.SubscriptionOptions) (options, error) {

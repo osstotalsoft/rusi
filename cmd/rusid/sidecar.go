@@ -8,9 +8,11 @@ import (
 	grpc_api "rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
+	"rusi/pkg/healthcheck"
 	"rusi/pkg/modes"
 	"rusi/pkg/operator"
 	"rusi/pkg/runtime"
+	"time"
 )
 
 func main() {
@@ -21,7 +23,7 @@ func main() {
 	defer klog.Flush()
 
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
-	cfgBuilder.AttachCmdFlags(flag.StringVar, flag.BoolVar)
+	cfgBuilder.AttachCmdFlags(flag.StringVar, flag.BoolVar, flag.IntVar)
 	flag.Parse()
 	cfg, err := cfgBuilder.Build()
 	if err != nil {
@@ -60,8 +62,20 @@ func main() {
 		"app id", cfg.AppID, "mode", cfg.Mode)
 	klog.InfoS("Rusid is using", "config", cfg)
 
+	//setup HealthzServer
+	startHealthzServer(cfg.HealthzPort,
+		// WithTimeout allows you to set a max overall timeout.
+		healthcheck.WithTimeout(5*time.Second),
+		healthcheck.WithChecker("component manager", compManager))
+
 	err = rt.Run()
 	if err != nil {
 		klog.Error(err)
+	}
+}
+
+func startHealthzServer(healthzPort int, options ...healthcheck.Option) {
+	if err := healthcheck.Run(context.Background(), healthzPort, options...); err != nil {
+		klog.Fatalf("failed to start healthz server: %s", err)
 	}
 }
