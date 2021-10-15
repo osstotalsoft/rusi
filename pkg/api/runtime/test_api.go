@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"rusi/pkg/messaging"
 )
 
@@ -14,7 +15,7 @@ func NewTestApi() *TestApi {
 	return &TestApi{RefreshChan: make(chan bool)}
 }
 
-func (TestApi) Serve() error {
+func (TestApi) Serve(ctx context.Context) error {
 	return nil
 }
 

@@ -140,6 +140,6 @@ func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.Subsc
 	return srv.StartSubscribing(request)
 }
 
-func (rt *runtime) Run() error {
-	return rt.api.Serve()
+func (rt *runtime) Run(ctx context.Context) error {
+	return rt.api.Serve(ctx)
 }

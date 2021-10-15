@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"k8s.io/klog/v2"
+	"os"
+	"os/signal"
 	"rusi/internal/tracing"
 	grpc_api "rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
@@ -16,7 +18,7 @@ import (
 )
 
 func main() {
-	mainCtx := context.Background()
+	mainCtx, cancel := context.WithCancel(context.Background())
 
 	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
@@ -62,20 +64,34 @@ func main() {
 		"app id", cfg.AppID, "mode", cfg.Mode)
 	klog.InfoS("Rusid is using", "config", cfg)
 
-	//setup HealthzServer
-	startHealthzServer(cfg.HealthzPort,
+	//Healthz server
+	go startHealthzServer(mainCtx, cfg.HealthzPort,
 		// WithTimeout allows you to set a max overall timeout.
 		healthcheck.WithTimeout(5*time.Second),
 		healthcheck.WithChecker("component manager", compManager))
 
-	err = rt.Run()
+	shutdownOnInterrupt(cancel)
+
+	err = rt.Run(mainCtx) //blocks
 	if err != nil {
 		klog.Error(err)
 	}
 }
 
-func startHealthzServer(healthzPort int, options ...healthcheck.Option) {
-	if err := healthcheck.Run(context.Background(), healthzPort, options...); err != nil {
+func shutdownOnInterrupt(cancel func()) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		<-c
+		klog.InfoS("Shutdown requested")
+		cancel()
+	}()
+
+}
+
+func startHealthzServer(ctx context.Context, healthzPort int, options ...healthcheck.Option) {
+	if err := healthcheck.Run(ctx, healthzPort, options...); err != nil {
 		klog.Fatalf("failed to start healthz server: %s", err)
 	}
 }

@@ -44,7 +44,7 @@ func (srv *grpcApi) Refresh() error {
 	return srv.server.Refresh()
 }
 
-func (srv *grpcApi) Serve() error {
+func (srv *grpcApi) Serve(ctx context.Context) error {
 	grpcServer := grpc.NewServer(srv.serverOptions...)
 	v1.RegisterRusiServer(grpcServer, srv.server)
 
@@ -52,6 +52,13 @@ func (srv *grpcApi) Serve() error {
 	if err != nil {
 		klog.Fatalf("failed to listen: %v", err)
 	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			grpcServer.Stop()
+		}
+	}()
 
 	return grpcServer.Serve(lis)
 }

@@ -1,9 +1,12 @@
 package runtime
 
-import "rusi/pkg/messaging"
+import (
+	"context"
+	"rusi/pkg/messaging"
+)
 
 type Api interface {
-	Serve() error
+	Serve(ctx context.Context) error
 	Refresh() error
 	SetPublishHandler(messaging.PublishRequestHandler)
 	SetSubscribeHandler(messaging.SubscribeRequestHandler)
