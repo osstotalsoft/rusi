@@ -335,7 +335,7 @@ func (n *natsStreamingPubSub) Close() error {
 	return n.natStreamingConn.Close()
 }
 
-func (n *natsStreamingPubSub) IsHealthy() healthcheck.HealthResult {
+func (n *natsStreamingPubSub) IsHealthy(ctx context.Context) healthcheck.HealthResult {
 	if n.closed ||
 		n.natStreamingConn == nil ||
 		n.natStreamingConn.NatsConn() == nil ||

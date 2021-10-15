@@ -210,6 +210,7 @@ func getComponentKey(ctype, name string) string {
 func (m *ComponentsManager) IsHealthy(ctx context.Context) healthcheck.HealthResult {
 	m.mux.RLock()
 	defer m.mux.RUnlock()
+
 	for _, ps := range m.pubSubInstances {
 		if hc, ok := ps.(healthcheck.HealthChecker); ok {
 			if r := hc.IsHealthy(ctx); r.Status != healthcheck.Healthy {
@@ -217,5 +218,13 @@ func (m *ComponentsManager) IsHealthy(ctx context.Context) healthcheck.HealthRes
 			}
 		}
 	}
+
+	if len(m.pubSubInstances) == 0 {
+		return healthcheck.HealthResult{
+			Status:      healthcheck.Unhealthy,
+			Description: "no pubsub instance created yet",
+		}
+	}
+
 	return healthcheck.HealthyResult
 }
