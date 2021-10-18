@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"k8s.io/klog/v2"
+	"net/http"
 	"os"
 	"os/signal"
 	"rusi/internal/tracing"
@@ -92,6 +93,8 @@ func shutdownOnInterrupt(cancel func()) {
 
 func startHealthzServer(ctx context.Context, healthzPort int, options ...healthcheck.Option) {
 	if err := healthcheck.Run(ctx, healthzPort, options...); err != nil {
-		klog.Fatalf("failed to start healthz server: %s", err)
+		if err != http.ErrServerClosed {
+			klog.ErrorS(err, "failed to start healthz server")
+		}
 	}
 }

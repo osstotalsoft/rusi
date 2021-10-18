@@ -117,6 +117,7 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 	defer cancel()
 	exit := false
 	refreshChan := srv.createRefreshChan()
+	defer srv.removeRefreshChan(refreshChan)
 	handler := srv.buildSubscribeHandler(subscribeServer)
 	for {
 		hCtx, hCancel := context.WithCancel(ctx)
@@ -144,7 +145,6 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 		hCancel()
 		_ = unsub()
 		if exit {
-			srv.removeRefreshChan(refreshChan)
 			return ctx.Err()
 		}
 	}
@@ -279,7 +279,7 @@ func (srv *rusiServerImpl) Publish(ctx context.Context, request *v1.PublishReque
 	})
 
 	if err != nil {
-		klog.V(4).Info(err)
+		klog.ErrorS(err, "error on publishing")
 		err = status.Errorf(codes.Unknown, err.Error())
 	}
 	return &emptypb.Empty{}, err

@@ -2,7 +2,7 @@ package messaging
 
 import (
 	"context"
-	"fmt"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/klog/v2"
 	"sync"
 	"sync/atomic"
@@ -20,8 +20,6 @@ func NewInMemoryBus() *inMemoryBus {
 }
 
 func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
-	atomic.AddInt32(c.workingCounter, 1)
-	defer atomic.AddInt32(c.workingCounter, -1)
 	c.mu.RLock()
 	h := c.handlers[topic]
 	c.mu.RUnlock()
@@ -29,12 +27,9 @@ func (c *inMemoryBus) Publish(topic string, env *MessageEnvelope) error {
 		env.Headers = map[string]string{}
 	}
 	env.Headers["topic"] = topic
-	println("Publish to topic " + topic)
+	klog.InfoS("Publish to topic " + topic)
 
-	println("start runHandlers for topic " + topic)
-	c.runHandlers(h, env)
-	println("finish runHandlers for topic " + topic)
-
+	go c.runHandlers(h, env)
 	return nil
 }
 
@@ -44,7 +39,7 @@ func (c *inMemoryBus) Subscribe(topic string, handler Handler, options *Subscrip
 
 	handlerP := &handler
 	c.handlers[topic] = append(c.handlers[topic], handlerP)
-	println("Subscribed to topic " + topic)
+	klog.InfoS("Subscribed to topic " + topic)
 
 	return func() error {
 		c.mu.Lock()
@@ -57,7 +52,7 @@ func (c *inMemoryBus) Subscribe(topic string, handler Handler, options *Subscrip
 		}
 		c.handlers[topic] = s
 
-		println("unSubscribe from topic " + topic)
+		klog.InfoS("unSubscribe from topic " + topic)
 		return nil
 	}, nil
 }
@@ -79,24 +74,29 @@ func (c *inMemoryBus) GetSubscribersCount(topic string) int {
 	return len(c.handlers[topic])
 }
 
-func (c *inMemoryBus) runHandlers(handlers []*Handler, env *MessageEnvelope) {
-	sg := sync.WaitGroup{}
-	sg.Add(len(handlers))
+func (c *inMemoryBus) runHandlers(handlers []*Handler, env *MessageEnvelope) error {
+	atomic.AddInt32(c.workingCounter, 1)
+	defer atomic.AddInt32(c.workingCounter, -1)
+
+	klog.InfoS("start runHandlers for topic " + env.Subject)
+	eg := errgroup.Group{}
 	c.mu.RLock()
 	for i, h := range handlers {
 		h := h
 		i := i
-		println(fmt.Sprintf("starting Handler %d with metadata %v", i, env.Headers))
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+		klog.Infof("starting Handler %d with metadata %v", i, env.Headers)
+		eg.Go(func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 			defer cancel()
-			defer sg.Done()
-			err := (*h)(ctx, env)
-			if err != nil {
-				klog.ErrorS(err, "error")
-			}
-		}()
+			return (*h)(ctx, env) //run handler blocks
+		})
 	}
 	c.mu.RUnlock()
-	sg.Wait()
+	err := eg.Wait()
+	if err != nil {
+		klog.ErrorS(err, "error running handlers")
+	} else {
+		klog.InfoS("finish runHandlers for topic " + env.Subject)
+	}
+	return err
 }
