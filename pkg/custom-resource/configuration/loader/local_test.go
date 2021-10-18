@@ -56,7 +56,7 @@ spec:
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := LoadStandaloneConfiguration(ctx, tc.path)
+			_, err := LoadStandaloneConfiguration(tc.path)(ctx)
 			if tc.errorExpected {
 				assert.Error(t, err, "Expected an error")
 			} else {
@@ -67,7 +67,7 @@ spec:
 
 	t.Run("Parse environment variables", func(t *testing.T) {
 		os.Setenv("RUSI_ZIPKIN_ENDPOINT", "http://localhost:42323")
-		configChan, err := LoadStandaloneConfiguration(ctx, "env_variables_config.yaml")
+		configChan, err := LoadStandaloneConfiguration("env_variables_config.yaml")(ctx)
 		config := <-configChan
 		assert.NoError(t, err, "Unexpected error")
 		assert.NotNil(t, config, "Config not loaded as expected")
@@ -75,7 +75,7 @@ spec:
 	})
 
 	t.Run("Load config file", func(t *testing.T) {
-		configChan, err := LoadStandaloneConfiguration(ctx, "config.yaml")
+		configChan, err := LoadStandaloneConfiguration("config.yaml")(ctx)
 		config := <-configChan
 		assert.NoError(t, err, "Unexpected error")
 		assert.NotNil(t, config, "Config not loaded as expected")
@@ -131,7 +131,7 @@ spec:
 	ctx := context.Background()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			configChan, err := LoadStandaloneConfiguration(ctx, tc.confFile)
+			configChan, err := LoadStandaloneConfiguration(tc.confFile)(ctx)
 			config := <-configChan
 			assert.NoError(t, err)
 			assert.Equal(t, tc.featureEnabled, configuration.IsFeatureEnabled(config.Features, tc.featureName))

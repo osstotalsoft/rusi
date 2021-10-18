@@ -25,29 +25,31 @@ func LoadDefaultConfiguration() configuration.Spec {
 }
 
 // LoadStandaloneConfiguration gets the path to a config file and loads it into a configuration.
-func LoadStandaloneConfiguration(ctx context.Context, config string) (<-chan configuration.Spec, error) {
-	spec := LoadDefaultConfiguration()
-	c := make(chan configuration.Spec)
+func LoadStandaloneConfiguration(config string) func(ctx context.Context) (<-chan configuration.Spec, error) {
+	return func(ctx context.Context) (<-chan configuration.Spec, error) {
+		spec := LoadDefaultConfiguration()
+		c := make(chan configuration.Spec)
 
-	_, err := os.Stat(config)
-	if err != nil {
+		_, err := os.Stat(config)
+		if err != nil {
+			return c, err
+		}
+
+		b, err := ioutil.ReadFile(config)
+		if err != nil {
+			return c, err
+		}
+
+		// Parse environment variables from yaml
+		b = []byte(os.ExpandEnv(string(b)))
+
+		cfg := configuration.Configuration{Spec: spec}
+		err = yaml.Unmarshal(b, &cfg)
+
+		go func() {
+			c <- cfg.Spec
+		}()
+
 		return c, err
 	}
-
-	b, err := ioutil.ReadFile(config)
-	if err != nil {
-		return c, err
-	}
-
-	// Parse environment variables from yaml
-	b = []byte(os.ExpandEnv(string(b)))
-
-	cfg := configuration.Configuration{Spec: spec}
-	err = yaml.Unmarshal(b, &cfg)
-
-	go func() {
-		c <- cfg.Spec
-	}()
-
-	return c, err
 }

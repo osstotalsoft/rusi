@@ -10,6 +10,7 @@ import (
 	"rusi/pkg/custom-resource/configuration"
 	"rusi/pkg/kube"
 	operatorv1 "rusi/pkg/proto/operator/v1"
+	"sync"
 )
 
 var conn *grpc.ClientConn
@@ -37,13 +38,10 @@ func newClient(ctx context.Context, address string) (cl operatorv1.RusiOperatorC
 	return operatorv1.NewRusiOperatorClient(conn), nil
 }
 
-func GetComponentsWatcher(address string) func(context.Context) (<-chan components.Spec, error) {
+func GetComponentsWatcher(ctx context.Context, address string, wg *sync.WaitGroup) func(context.Context) (<-chan components.Spec, error) {
+	client, _ := newClient(ctx, address)
 	return func(ctx context.Context) (<-chan components.Spec, error) {
 		c := make(chan components.Spec)
-		client, err := newClient(ctx, address)
-		if err != nil {
-			return nil, err
-		}
 		namespace := kube.GetCurrentNamespace()
 		req := &operatorv1.WatchComponentsRequest{Namespace: namespace}
 		stream, err := client.WatchComponents(ctx, req)
@@ -51,9 +49,13 @@ func GetComponentsWatcher(address string) func(context.Context) (<-chan componen
 			return nil, err
 		}
 		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			defer close(c)
 			for {
 				select {
 				case <-ctx.Done():
+					klog.ErrorS(ctx.Err(), "watch components shutting down")
 					return
 				default:
 					for {
@@ -78,24 +80,24 @@ func GetComponentsWatcher(address string) func(context.Context) (<-chan componen
 	}
 }
 
-func GetConfigurationWatcher(address string) func(context.Context, string) (<-chan configuration.Spec, error) {
-	return func(ctx context.Context, name string) (<-chan configuration.Spec, error) {
+func GetConfigurationWatcher(ctx context.Context, address, configName string, wg *sync.WaitGroup) func(context.Context) (<-chan configuration.Spec, error) {
+	client, _ := newClient(ctx, address)
+	return func(ctx context.Context) (<-chan configuration.Spec, error) {
 		c := make(chan configuration.Spec)
-		client, err := newClient(ctx, address)
-		if err != nil {
-			return nil, err
-		}
 		namespace := kube.GetCurrentNamespace()
-		req := &operatorv1.WatchConfigurationRequest{ConfigName: name, Namespace: namespace}
+		req := &operatorv1.WatchConfigurationRequest{ConfigName: configName, Namespace: namespace}
 		stream, err := client.WatchConfiguration(ctx, req)
-
 		if err != nil {
 			return nil, err
 		}
 		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			defer close(c)
 			for {
 				select {
 				case <-ctx.Done():
+					klog.ErrorS(ctx.Err(), "watch configuration shutting down")
 					return
 				default:
 					for {

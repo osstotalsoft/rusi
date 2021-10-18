@@ -32,7 +32,7 @@ func NewRuntime(ctx context.Context, config Config, api runtime_api.Api,
 	configurationLoader configuration_loader.ConfigurationLoader,
 	manager *ComponentsManager) (*runtime, error) {
 
-	configChan, err := configurationLoader(ctx, config.Config)
+	configChan, err := configurationLoader(ctx)
 	if err != nil {
 		klog.ErrorS(err, "error loading application config", "name",
 			config.Config, "mode", config.Mode)
@@ -62,10 +62,11 @@ func NewRuntime(ctx context.Context, config Config, api runtime_api.Api,
 func (rt *runtime) watchConfigurationUpdates() {
 	for update := range rt.configurationUpdatesChan {
 		if reflect.DeepEqual(rt.appConfig, update) {
-			return
+			klog.V(4).InfoS("configuration not changed")
+			continue
 		}
 		klog.InfoS("configuration changed")
-		klog.V(4).InfoS("configuration changed", "old config", rt.appConfig, "new config", update)
+		klog.V(4).InfoS("configuration details", "old", rt.appConfig, "new", update)
 		rt.appConfig = update
 		err := rt.api.Refresh()
 		if err != nil {

@@ -70,6 +70,7 @@ func (m *ComponentsManager) watchComponentsUpdates() {
 			klog.ErrorS(err, "Error loading ", "component", update.Name)
 		}
 	}
+	close(m.changeNotificationChan)
 }
 
 func (m *ComponentsManager) addOrUpdateComponent(spec components.Spec) (err error) {

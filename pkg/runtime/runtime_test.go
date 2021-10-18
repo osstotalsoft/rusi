@@ -36,8 +36,8 @@ func Test_runtime_PublishHandler(t *testing.T) {
 		return request
 	}
 
-	configLoader := func(channel chan configuration.Spec, err error, streamer func(channel chan configuration.Spec)) func(ctx context.Context, name string) (<-chan configuration.Spec, error) {
-		return func(ctx context.Context, name string) (<-chan configuration.Spec, error) {
+	configLoader := func(channel chan configuration.Spec, err error, streamer func(channel chan configuration.Spec)) func(ctx context.Context) (<-chan configuration.Spec, error) {
+		return func(ctx context.Context) (<-chan configuration.Spec, error) {
 			go streamer(channel)
 			return channel, err
 		}

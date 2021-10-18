@@ -7,11 +7,11 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/klog/v2"
-	"rusi/pkg/custom-resource/configuration"
+	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
 	"time"
 )
 
-func WatchConfig(mainCtx context.Context, configChan <-chan configuration.Spec,
+func WatchConfig(ctx context.Context, configLoader configuration_loader.ConfigurationLoader,
 	tracerFunc func(url, environment, serviceName string) (*tracesdk.TracerProvider, error),
 	environment, serviceName string) {
 
@@ -20,13 +20,19 @@ func WatchConfig(mainCtx context.Context, configChan <-chan configuration.Spec,
 		prevEndpointAddresss string
 		tp                   *tracesdk.TracerProvider
 	)
+
+	configChan, err := configLoader(ctx)
+	if err != nil {
+		klog.ErrorS(err, "error loading application config")
+	}
+
 	for cfg := range configChan {
 		if prevEndpointAddresss == cfg.TracingSpec.Zipkin.EndpointAddresss {
 			continue
 		}
 		if tp != nil {
 			//flush prev logs
-			FlushTracer(tp)(mainCtx)
+			FlushTracer(tp)(ctx)
 		}
 		if cfg.TracingSpec.Zipkin.EndpointAddresss != "" {
 			tp, err = tracerFunc(cfg.TracingSpec.Zipkin.EndpointAddresss, environment, serviceName)
@@ -38,7 +44,7 @@ func WatchConfig(mainCtx context.Context, configChan <-chan configuration.Spec,
 	}
 	if tp != nil {
 		//flush prev logs
-		FlushTracer(tp)(mainCtx)
+		FlushTracer(tp)(ctx)
 	}
 }
 
@@ -57,7 +63,7 @@ func FlushTracer(tp *tracesdk.TracerProvider) func(ctx context.Context) {
 		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 		defer cancel()
 		if err := tp.Shutdown(ctx); err != nil {
-			klog.Fatal(err)
+			klog.ErrorS(err, "Tracer shutdown error")
 		}
 	}
 }

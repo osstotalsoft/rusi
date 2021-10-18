@@ -56,7 +56,7 @@ func (srv *grpcApi) Serve(ctx context.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			grpcServer.Stop()
+			grpcServer.GracefulStop()
 		}
 	}()
 

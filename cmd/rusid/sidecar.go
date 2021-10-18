@@ -15,11 +15,13 @@ import (
 	"rusi/pkg/modes"
 	"rusi/pkg/operator"
 	"rusi/pkg/runtime"
+	"sync"
 	"time"
 )
 
 func main() {
 	mainCtx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
 
 	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
@@ -34,19 +36,14 @@ func main() {
 		return
 	}
 	compLoader := components_loader.LoadLocalComponents(cfg.ComponentsPath)
-	configLoader := configuration_loader.LoadStandaloneConfiguration
+	configLoader := configuration_loader.LoadStandaloneConfiguration(cfg.Config)
 	if cfg.Mode == modes.KubernetesMode {
-		compLoader = operator.GetComponentsWatcher(cfg.ControlPlaneAddress)
-		configLoader = operator.GetConfigurationWatcher(cfg.ControlPlaneAddress)
-	}
-
-	configChan, err := configLoader(mainCtx, cfg.Config)
-	if err != nil {
-		klog.Fatal(err)
+		compLoader = operator.GetComponentsWatcher(mainCtx, cfg.ControlPlaneAddress, wg)
+		configLoader = operator.GetConfigurationWatcher(mainCtx, cfg.ControlPlaneAddress, cfg.Config, wg)
 	}
 
 	//setup tracing
-	go tracing.WatchConfig(mainCtx, configChan, tracing.SetJaegerTracing, "dev", cfg.AppID)
+	go tracing.WatchConfig(mainCtx, configLoader, tracing.SetJaegerTracing, "dev", cfg.AppID)
 
 	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,
 		RegisterComponentFactories()...)
@@ -54,6 +51,7 @@ func main() {
 		klog.Error(err)
 		return
 	}
+
 	api := grpc_api.NewGrpcAPI(cfg.RusiGRPCPort)
 	rt, err := runtime.NewRuntime(mainCtx, cfg, api, configLoader, compManager)
 	if err != nil {
@@ -65,8 +63,8 @@ func main() {
 		"app id", cfg.AppID, "mode", cfg.Mode)
 	klog.InfoS("Rusid is using", "config", cfg)
 
-	//Healthz server
-	go startHealthzServer(mainCtx, cfg.HealthzPort,
+	//Start healthz server
+	go startHealthzServer(mainCtx, wg, cfg.HealthzPort,
 		// WithTimeout allows you to set a max overall timeout.
 		healthcheck.WithTimeout(5*time.Second),
 		healthcheck.WithChecker("component manager", compManager))
@@ -77,6 +75,8 @@ func main() {
 	if err != nil {
 		klog.Error(err)
 	}
+
+	wg.Wait() // wait for app to close gracefully
 }
 
 func shutdownOnInterrupt(cancel func()) {
@@ -91,7 +91,10 @@ func shutdownOnInterrupt(cancel func()) {
 
 }
 
-func startHealthzServer(ctx context.Context, healthzPort int, options ...healthcheck.Option) {
+func startHealthzServer(ctx context.Context, wg *sync.WaitGroup, healthzPort int, options ...healthcheck.Option) {
+	wg.Add(1)
+	defer wg.Done()
+
 	if err := healthcheck.Run(ctx, healthzPort, options...); err != nil {
 		if err != http.ErrServerClosed {
 			klog.ErrorS(err, "failed to start healthz server")
