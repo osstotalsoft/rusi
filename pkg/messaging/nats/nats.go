@@ -189,14 +189,14 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 	n.natStreamingConn = natStreamingConn
 
 	n.natStreamingConn.NatsConn().SetReconnectHandler(func(conn *nats.Conn) {
-		klog.Info("SetReconnectHandler")
+		klog.Info("nats is reconnecting ...")
 	})
 	n.natStreamingConn.NatsConn().SetClosedHandler(func(conn *nats.Conn) {
-		klog.Info("SetClosedHandler")
+		klog.Info("nats connection is closed")
 		n.closed = true
 	})
 	n.natStreamingConn.NatsConn().SetDisconnectErrHandler(func(conn *nats.Conn, err error) {
-		klog.ErrorS(err, "SetDisconnectErrHandler")
+		klog.ErrorS(err, "nats is disconnected")
 	})
 
 	return nil
