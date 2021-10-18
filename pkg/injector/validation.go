@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"regexp"
-	"strings"
 )
 
 // The consts and vars beginning with dns* were taken from: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go
@@ -21,12 +20,7 @@ func ValidateKubernetesAppID(appID string) error {
 	if appID == "" {
 		return errors.New("value for the rusi.io/app-id annotation is empty")
 	}
-	r := isDNS1123Label(appID)
-	if len(r) == 0 {
-		return nil
-	}
-	s := fmt.Sprintf("invalid app id(input: %s): %s", appID, strings.Join(r, ","))
-	return errors.New(s)
+	return nil
 }
 
 // The function was taken as-is from: https://github.com/kubernetes/apimachinery/blob/fc49b38c19f02a58ebc476347e622142f19820b9/pkg/util/validation/validation.go

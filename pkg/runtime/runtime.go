@@ -40,6 +40,7 @@ func NewRuntime(ctx context.Context, config Config, api runtime_api.Api,
 	}
 
 	//block until config arrives
+	klog.InfoS("waiting for configuration")
 	rt := &runtime{
 		api:   api,
 		ctx:   ctx,
