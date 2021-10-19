@@ -6,7 +6,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 	"net"
-	"rusi/pkg/kube"
+	"rusi/internal/kube"
 	compv1 "rusi/pkg/operator/apis/components/v1alpha1"
 	configv1 "rusi/pkg/operator/apis/configuration/v1alpha1"
 	"rusi/pkg/operator/client/clientset/versioned"

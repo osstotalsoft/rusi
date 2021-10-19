@@ -6,9 +6,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"k8s.io/klog/v2"
+	"rusi/internal/kube"
 	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/custom-resource/configuration"
-	"rusi/pkg/kube"
 	operatorv1 "rusi/pkg/proto/operator/v1"
 	"sync"
 )

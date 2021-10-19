@@ -45,7 +45,9 @@ func main() {
 	}
 
 	//setup tracing
-	go tracing.WatchConfig(mainCtx, configLoader, tracing.SetJaegerTracing, "dev", cfg.AppID)
+	go diagnostics.WatchConfig(mainCtx, configLoader,
+		tracing.SetJaegerTracing("dev", cfg.AppID),
+		metrics.GetPrometheusExporter)
 
 	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,
 		RegisterComponentFactories()...)
@@ -66,7 +68,7 @@ func main() {
 	klog.InfoS("Rusid is using", "config", cfg)
 
 	//Start diagnostics server
-	go startDiagnosticsServer(mainCtx, wg, cfg.HealthzPort,
+	go startDiagnosticsServer(mainCtx, wg, cfg.DiagnosticsPort,
 		// WithTimeout allows you to set a max overall timeout.
 		healthcheck.WithTimeout(5*time.Second),
 		healthcheck.WithChecker("component manager", compManager))

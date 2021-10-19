@@ -33,11 +33,16 @@ func JaegerTracerProvider(url, environment, serviceName string) (*tracesdk.Trace
 	return tp, nil
 }
 
-func SetJaegerTracing(url, environment, serviceName string) (*tracesdk.TracerProvider, error) {
-	tp, err := JaegerTracerProvider(url, environment, serviceName)
-	if err != nil {
-		return nil, err
+func SetJaegerTracing(environment, serviceName string) func(url string) (func(), error) {
+	return func(url string) (func(), error) {
+		tp, err := JaegerTracerProvider(url, environment, serviceName)
+		if err != nil {
+			return nil, err
+		}
+		SetTracing(tp, jaeger_propagators.Jaeger{})
+
+		return func() {
+			FlushTracer(tp)
+		}, nil
 	}
-	SetTracing(tp, jaeger_propagators.Jaeger{})
-	return tp, nil
 }

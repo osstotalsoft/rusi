@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"k8s.io/klog/v2"
-	"rusi/pkg/kube"
+	"rusi/internal/kube"
 	"rusi/pkg/operator"
 )
 

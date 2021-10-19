@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"context"
+	"rusi/internal/metrics"
 	"rusi/pkg/messaging"
-	"rusi/pkg/metrics"
 	"time"
 )
 
