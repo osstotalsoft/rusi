@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"rusi/internal/diagnostics"
+	"rusi/internal/metrics"
 	"rusi/internal/tracing"
 	grpc_api "rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
@@ -63,8 +65,8 @@ func main() {
 		"app id", cfg.AppID, "mode", cfg.Mode)
 	klog.InfoS("Rusid is using", "config", cfg)
 
-	//Start healthz server
-	go startHealthzServer(mainCtx, wg, cfg.HealthzPort,
+	//Start diagnostics server
+	go startDiagnosticsServer(mainCtx, wg, cfg.HealthzPort,
 		// WithTimeout allows you to set a max overall timeout.
 		healthcheck.WithTimeout(5*time.Second),
 		healthcheck.WithChecker("component manager", compManager))
@@ -91,13 +93,17 @@ func shutdownOnInterrupt(cancel func()) {
 
 }
 
-func startHealthzServer(ctx context.Context, wg *sync.WaitGroup, healthzPort int, options ...healthcheck.Option) {
+func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, healthzPort int, options ...healthcheck.Option) {
 	wg.Add(1)
 	defer wg.Done()
 
-	if err := healthcheck.Run(ctx, healthzPort, options...); err != nil {
+	router := http.NewServeMux()
+	router.Handle("/healthz", healthcheck.HandlerFunc(options...))
+	router.Handle("/metrics", metrics.GetPrometheusMetricHandler())
+
+	if err := diagnostics.Run(ctx, healthzPort, router); err != nil {
 		if err != http.ErrServerClosed {
-			klog.ErrorS(err, "failed to start healthz server")
+			klog.ErrorS(err, "failed to start diagnostics server")
 		}
 	}
 }

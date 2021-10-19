@@ -5,7 +5,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/unit"
 	"os"
 	"time"
 )
@@ -16,10 +15,10 @@ var (
 )
 
 type serviceMetrics struct {
-	pubsubMeter        metric.Meter
-	hostname           string
-	publishCount       metric.Int64Counter
-	processingDuration metric.Int64Histogram
+	pubsubMeter       metric.Meter
+	hostname          string
+	publishCount      metric.Int64Counter
+	subscribeDuration metric.Int64Histogram
 }
 
 func newServiceMetrics() *serviceMetrics {
@@ -28,31 +27,34 @@ func newServiceMetrics() *serviceMetrics {
 	hostname, _ := os.Hostname()
 
 	return &serviceMetrics{
-		pubsubMeter:        meter,
-		hostname:           hostname,
-		publishCount:       pubsubM.NewInt64Counter("rusi.io.pubsub.publishcount"),
-		processingDuration: pubsubM.NewInt64Histogram("rusi.io.pubsub.processingduration", metric.WithUnit(unit.Milliseconds)),
+		pubsubMeter: meter,
+		hostname:    hostname,
+		publishCount: pubsubM.NewInt64Counter("pubsub.publish.count",
+			metric.WithDescription("The number of publishes")),
+		subscribeDuration: pubsubM.NewInt64Histogram("pubsub.subscribe.duration",
+			metric.WithDescription("The duration of a message execution"),
+			metric.WithUnit("milliseconds")),
 	}
 }
 
-func (s *serviceMetrics) RecordPublishMessage(ctx context.Context, topic string) {
+func (s *serviceMetrics) RecordPublishMessage(ctx context.Context, topic string, success bool) {
 	s.pubsubMeter.RecordBatch(
 		ctx,
 		[]attribute.KeyValue{
 			attribute.String("hostname", s.hostname),
 			attribute.String("topic", topic),
-			attribute.Bool("success", true),
+			attribute.Bool("success", success),
 		},
 		s.publishCount.Measurement(1))
 }
 
-func (s *serviceMetrics) RecordSubscriberProcessingTime(ctx context.Context, topic string, elapsed time.Duration) {
+func (s *serviceMetrics) RecordSubscriberProcessingTime(ctx context.Context, topic string, success bool, elapsed time.Duration) {
 	s.pubsubMeter.RecordBatch(
 		ctx,
 		[]attribute.KeyValue{
 			attribute.String("hostname", s.hostname),
 			attribute.String("topic", topic),
-			attribute.Bool("success", true),
+			attribute.Bool("success", success),
 		},
-		s.processingDuration.Measurement(elapsed.Milliseconds()))
+		s.subscribeDuration.Measurement(elapsed.Milliseconds()))
 }
