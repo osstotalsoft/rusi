@@ -32,6 +32,7 @@ func Run(ctx context.Context, port int, router http.Handler) error {
 
 	klog.Infof("Diagnostics server is listening on %s", srv.Addr)
 	err := srv.ListenAndServe()
+	klog.Info("Diagnostics server was closed")
 	close(doneCh)
 	return err
 }

@@ -8,8 +8,7 @@ import (
 )
 
 func WatchConfig(ctx context.Context, configLoader configuration_loader.ConfigurationLoader,
-	tracerFunc func(url string) (func(), error),
-	metricsFunc func(bool) error) {
+	tracerFunc func(url string) (func(), error)) {
 
 	var (
 		prevConf       configuration.Spec
@@ -35,12 +34,6 @@ func WatchConfig(ctx context.Context, configLoader configuration_loader.Configur
 			}
 		}
 
-		if prevConf.MetricSpec.Enabled != cfg.MetricSpec.Enabled {
-			err := metricsFunc(cfg.MetricSpec.Enabled)
-			if err != nil {
-				klog.ErrorS(err, "error creating metrics exporter")
-			}
-		}
 		prevConf = cfg
 	}
 

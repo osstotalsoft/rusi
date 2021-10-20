@@ -12,7 +12,7 @@ import (
 	"net/http"
 )
 
-func GetPrometheusExporter(enabled bool) error {
+func GetPrometheusMetricHandler() http.HandlerFunc {
 	config := prometheus.Config{}
 	c := controller.New(
 		processor.NewFactory(
@@ -29,26 +29,5 @@ func GetPrometheusExporter(enabled bool) error {
 		return nil
 	}
 	global.SetMeterProvider(exporter.MeterProvider())
-	return nil
-}
-
-func GetPrometheusMetricHandler() http.HandlerFunc {
-	config := prometheus.Config{}
-	c := controller.New(
-		processor.NewFactory(
-			selector.NewWithHistogramDistribution(
-				histogram.WithExplicitBoundaries(config.DefaultHistogramBoundaries),
-			),
-			sdk_metric.CumulativeExportKindSelector(),
-			processor.WithMemory(true),
-		),
-	)
-	exporter, err := prometheus.New(config, c)
-	if err != nil {
-		klog.ErrorS(err, "failed to initialize prometheus exporter %v")
-		return nil
-	}
-	global.SetMeterProvider(exporter.MeterProvider())
-
 	return exporter.ServeHTTP
 }

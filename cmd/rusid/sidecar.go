@@ -45,9 +45,7 @@ func main() {
 	}
 
 	//setup tracing
-	go diagnostics.WatchConfig(mainCtx, configLoader,
-		tracing.SetJaegerTracing("dev", cfg.AppID),
-		metrics.GetPrometheusExporter)
+	go diagnostics.WatchConfig(mainCtx, configLoader, tracing.SetJaegerTracing("dev", cfg.AppID))
 
 	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,
 		RegisterComponentFactories()...)
@@ -68,7 +66,7 @@ func main() {
 	klog.InfoS("Rusid is using", "config", cfg)
 
 	//Start diagnostics server
-	go startDiagnosticsServer(mainCtx, wg, cfg.DiagnosticsPort,
+	go startDiagnosticsServer(mainCtx, wg, cfg.DiagnosticsPort, cfg.EnableMetrics,
 		// WithTimeout allows you to set a max overall timeout.
 		healthcheck.WithTimeout(5*time.Second),
 		healthcheck.WithChecker("component manager", compManager))
@@ -81,6 +79,7 @@ func main() {
 	}
 
 	wg.Wait() // wait for app to close gracefully
+	klog.Info("Rusid closed gracefully")
 }
 
 func shutdownOnInterrupt(cancel func()) {
@@ -92,18 +91,23 @@ func shutdownOnInterrupt(cancel func()) {
 		klog.InfoS("Shutdown requested")
 		cancel()
 	}()
-
 }
 
-func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, healthzPort int, options ...healthcheck.Option) {
+func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, port int,
+	enableMetrics bool, options ...healthcheck.Option) {
 	wg.Add(1)
 	defer wg.Done()
 
 	router := http.NewServeMux()
 	router.Handle("/healthz", healthcheck.HandlerFunc(options...))
-	router.Handle("/metrics", metrics.GetPrometheusMetricHandler())
 
-	if err := diagnostics.Run(ctx, healthzPort, router); err != nil {
+	if enableMetrics {
+		router.Handle("/metrics", metrics.GetPrometheusMetricHandler())
+	} else {
+		metrics.SetNoopMeterProvider()
+	}
+
+	if err := diagnostics.Run(ctx, port, router); err != nil {
 		if err != http.ErrServerClosed {
 			klog.ErrorS(err, "failed to start diagnostics server")
 		}

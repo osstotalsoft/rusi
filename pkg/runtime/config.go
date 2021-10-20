@@ -11,12 +11,14 @@ import (
 const (
 	defaultGRPCPort        = 50003
 	defaultDiagnosticsPort = 8080
+	defaultEnableMetrics   = false
 )
 
 type ConfigBuilder struct {
 	mode                string
 	rusiGRPCPort        int
 	diagnosticsPort     int
+	enableMetrics       bool
 	componentsPath      string
 	config              string
 	controlPlaneAddress string
@@ -27,6 +29,7 @@ type Config struct {
 	Mode                modes.RusiMode
 	RusiGRPCPort        int
 	DiagnosticsPort     int
+	EnableMetrics       bool
 	ComponentsPath      string
 	Config              string
 	ControlPlaneAddress string
@@ -49,6 +52,7 @@ func (c *ConfigBuilder) AttachCmdFlags(
 	stringVar(&c.controlPlaneAddress, "control-plane-address", "", "Address for Rusi control plane")
 	stringVar(&c.appID, "app-id", "", "A unique ID for Rusi. Used for Service Discovery and state")
 	intVar(&c.diagnosticsPort, "diagnostics-port", defaultDiagnosticsPort, "Sets the HTTP port for the diagnostics server (healthz and metrics)")
+	boolVar(&c.enableMetrics, "enable-metrics", defaultEnableMetrics, "Enable prometheus metrics endpoint")
 }
 
 func (c *ConfigBuilder) Build() (Config, error) {
@@ -73,6 +77,7 @@ func (c *ConfigBuilder) Build() (Config, error) {
 		Config:              c.config,
 		AppID:               c.appID,
 		DiagnosticsPort:     c.diagnosticsPort,
+		EnableMetrics:       c.enableMetrics,
 		ControlPlaneAddress: c.controlPlaneAddress,
 	}, nil
 }

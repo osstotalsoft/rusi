@@ -82,7 +82,8 @@ func (rt *runtime) watchComponentsUpdates() {
 			"name", update.ComponentSpec.Name, "type", update.ComponentSpec.Type)
 
 		switch {
-		case update.ComponentCategory == components.PubsubComponent && update.Operation == components.Update:
+		//case update.ComponentCategory == components.PubsubComponent && update.Operation == components.Update:
+		case update.Operation == components.Update:
 			err := rt.api.Refresh()
 			if err != nil {
 				klog.ErrorS(err, "error refreshing subscription")

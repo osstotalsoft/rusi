@@ -6,12 +6,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"os"
+	"sync"
 	"time"
-)
-
-var (
-	// DefaultMonitoring holds service monitoring metrics definitions.
-	DefaultMonitoring = newServiceMetrics()
 )
 
 type serviceMetrics struct {
@@ -19,6 +15,18 @@ type serviceMetrics struct {
 	hostname          string
 	publishCount      metric.Int64Counter
 	subscribeDuration metric.Int64Histogram
+}
+
+var (
+	initOnce sync.Once
+	s        *serviceMetrics
+)
+
+func DefaultMonitoring() *serviceMetrics {
+	initOnce.Do(func() {
+		s = newServiceMetrics()
+	})
+	return s
 }
 
 func newServiceMetrics() *serviceMetrics {
@@ -57,4 +65,8 @@ func (s *serviceMetrics) RecordSubscriberProcessingTime(ctx context.Context, top
 			attribute.Bool("success", success),
 		},
 		s.subscribeDuration.Measurement(elapsed.Milliseconds()))
+}
+
+func SetNoopMeterProvider() {
+	global.SetMeterProvider(metric.NewNoopMeterProvider())
 }
