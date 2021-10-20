@@ -45,7 +45,7 @@ const (
 	sidecarAPIGRPCPort            = 50003
 	userContainerRusiGRPCPortName = "RUSI_GRPC_PORT"
 	sidecarGRPCPortName           = "rusi-grpc"
-	sidecarMetricsPortName        = "rusi-metrics"
+	sidecarDiagnosticsPortName    = "rusi-diagnostics"
 	sidecarDebugPortName          = "rusi-debug"
 	defaultLogLevel               = "2"
 	apiAddress                    = "rusi-api"
@@ -57,7 +57,7 @@ const (
 	defaultSidecarDebug           = false
 	defaultSidecarDebugPort       = 40000
 
-	sidecarHealthzPort                = 8080
+	sidecarDiagnosticsPort            = 8080
 	sidecarHealthzPath                = "healthz"
 	defaultHealthzProbeDelaySeconds   = 3
 	defaultHealthzProbeTimeoutSeconds = 3
@@ -340,6 +340,10 @@ func getResourceRequirements(annotations map[string]string) (*corev1.ResourceReq
 	return nil, nil
 }
 
+func getEnableMetrics(annotations map[string]string) bool {
+	return getBoolAnnotationOrDefault(annotations, rusiEnableMetricsKey, defaultEnabledMetric)
+}
+
 func getMetricsPort(annotations map[string]string) int {
 	return int(getInt32AnnotationOrDefault(annotations, rusiMetricsPortKey, defaultMetricsPort))
 }
@@ -364,23 +368,20 @@ func getPullPolicy(pullPolicy string) corev1.PullPolicy {
 func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, imagePullPolicy,
 	namespace, controlPlaneAddress string, tokenVolumeMount *corev1.VolumeMount) (*corev1.Container, error) {
 
-	metricsPort := getMetricsPort(annotations)
+	metricsEnabled := getEnableMetrics(annotations)
 	pullPolicy := getPullPolicy(imagePullPolicy)
-	httpHandler := getProbeHTTPHandler(sidecarHealthzPort, sidecarHealthzPath)
+	httpHandler := getProbeHTTPHandler(sidecarDiagnosticsPort, sidecarHealthzPath)
 
 	allowPrivilegeEscalation := false
 
 	ports := []corev1.ContainerPort{
 		{
-			ContainerPort: int32(sidecarAPIGRPCPort),
+			ContainerPort: sidecarAPIGRPCPort,
 			Name:          sidecarGRPCPortName,
 		},
 		{
-			ContainerPort: int32(metricsPort),
-			Name:          sidecarMetricsPortName,
-		},
-		{
-			ContainerPort: sidecarHealthzPort,
+			ContainerPort: sidecarDiagnosticsPort,
+			Name:          sidecarDiagnosticsPortName,
 		},
 	}
 
@@ -393,6 +394,7 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 		"--v", getLogLevel(annotations),
 		"--control-plane-address", controlPlaneAddress,
 		"--config", getConfig(annotations),
+		fmt.Sprintf("--enable-metrics=%t", metricsEnabled),
 	}
 
 	debugEnabled := getEnableDebug(annotations)
