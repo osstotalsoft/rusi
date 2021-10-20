@@ -56,7 +56,7 @@ func (srv *grpcApi) Serve(ctx context.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			grpcServer.GracefulStop()
+			grpcServer.Stop()
 		}
 	}()
 
@@ -137,7 +137,7 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 		select {
 		case <-ctx.Done():
 			exit = true
-			klog.V(4).InfoS("Context done for", "topic", request.Topic, "error", ctx.Err())
+			klog.V(4).InfoS("closing subscription stream", "topic", request.Topic, "error", ctx.Err())
 		case <-refreshChan:
 			exit = false
 			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
@@ -205,7 +205,7 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 				klog.V(4).InfoS("Context done before ack", "message", ctx.Err())
 				return ctx.Err()
 			case err = <-errChan:
-				klog.V(4).InfoS("Ack received", "topic", env.Subject, "error", err)
+				klog.V(4).InfoS("Ack received", "topic", env.Subject, "Id", env.Id, "error", err)
 				return err
 			}
 		}
@@ -216,30 +216,37 @@ func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, s
 
 	//wait for ack from the client
 	for {
-		r, err := stream.Recv() //blocks
-		if err == nil {
-			if r.GetAckRequest() == nil {
-				err = errors.New("invalid ack response")
-			}
-			if r.GetAckRequest().GetError() != "" {
-				err = errors.New(r.GetAckRequest().GetError())
-			}
-		}
+		select {
+		case <-stream.Context().Done():
+			klog.V(4).ErrorS(stream.Context().Err(), "stopping ack stream watcher")
+			return
+		default:
 
-		mu.RLock()
-		mid := r.GetAckRequest().GetMessageId()
-		for id, ack := range subAckMap {
-			if id == mid {
-				if ack.ackHandler != nil {
-					ack.ackHandler(mid, err)
+			r, err := stream.Recv() //blocks
+			if err == nil {
+				if r.GetAckRequest() == nil {
+					err = errors.New("invalid ack response")
 				}
-				if ack.errCh != nil {
-					ack.errCh <- err
+				if r.GetAckRequest().GetError() != "" {
+					err = errors.New(r.GetAckRequest().GetError())
 				}
-				break
 			}
+
+			mu.RLock()
+			mid := r.GetAckRequest().GetMessageId()
+			for id, ack := range subAckMap {
+				if id == mid {
+					if ack.ackHandler != nil {
+						ack.ackHandler(mid, err)
+					}
+					if ack.errCh != nil {
+						ack.errCh <- err
+					}
+					break
+				}
+			}
+			mu.RUnlock()
 		}
-		mu.RUnlock()
 	}
 }
 

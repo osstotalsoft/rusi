@@ -9,16 +9,16 @@ import (
 )
 
 const (
-	defaultGRPCPort = 50003
-	// DefaultMetricsPort is the default port for metrics endpoints.
-	defaultMetricsPort = 9090
-	defaultHealthzPort = 8080
+	defaultGRPCPort        = 50003
+	defaultDiagnosticsPort = 8080
+	defaultEnableMetrics   = false
 )
 
 type ConfigBuilder struct {
 	mode                string
 	rusiGRPCPort        int
-	healthzPort         int
+	diagnosticsPort     int
+	enableMetrics       bool
 	componentsPath      string
 	config              string
 	controlPlaneAddress string
@@ -28,7 +28,8 @@ type ConfigBuilder struct {
 type Config struct {
 	Mode                modes.RusiMode
 	RusiGRPCPort        int
-	HealthzPort         int
+	DiagnosticsPort     int
+	EnableMetrics       bool
 	ComponentsPath      string
 	Config              string
 	ControlPlaneAddress string
@@ -50,7 +51,8 @@ func (c *ConfigBuilder) AttachCmdFlags(
 	stringVar(&c.config, "config", "", "Path to config file, or name of a configuration object")
 	stringVar(&c.controlPlaneAddress, "control-plane-address", "", "Address for Rusi control plane")
 	stringVar(&c.appID, "app-id", "", "A unique ID for Rusi. Used for Service Discovery and state")
-	intVar(&c.healthzPort, "healthz-port", defaultHealthzPort, "Sets the HTTP port for the healthz server")
+	intVar(&c.diagnosticsPort, "diagnostics-port", defaultDiagnosticsPort, "Sets the HTTP port for the diagnostics server (healthz and metrics)")
+	boolVar(&c.enableMetrics, "enable-metrics", defaultEnableMetrics, "Enable prometheus metrics endpoint")
 }
 
 func (c *ConfigBuilder) Build() (Config, error) {
@@ -62,8 +64,6 @@ func (c *ConfigBuilder) Build() (Config, error) {
 	variables := map[string]string{
 		utils.AppID:        c.appID,
 		utils.RusiGRPCPort: strconv.Itoa(c.rusiGRPCPort),
-		//utils.RusiMetricsPort: metricsExporter.Options().Port,
-		//utils.RusiProfilePort: c.profilePort,
 	}
 
 	if err = setEnvVariables(variables); err != nil {
@@ -76,7 +76,8 @@ func (c *ConfigBuilder) Build() (Config, error) {
 		ComponentsPath:      c.componentsPath,
 		Config:              c.config,
 		AppID:               c.appID,
-		HealthzPort:         c.healthzPort,
+		DiagnosticsPort:     c.diagnosticsPort,
+		EnableMetrics:       c.enableMetrics,
 		ControlPlaneAddress: c.controlPlaneAddress,
 	}, nil
 }

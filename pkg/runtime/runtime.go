@@ -82,7 +82,8 @@ func (rt *runtime) watchComponentsUpdates() {
 			"name", update.ComponentSpec.Name, "type", update.ComponentSpec.Type)
 
 		switch {
-		case update.ComponentCategory == components.PubsubComponent && update.Operation == components.Update:
+		//case update.ComponentCategory == components.PubsubComponent && update.Operation == components.Update:
+		case update.Operation == components.Update:
 			err := rt.api.Refresh()
 			if err != nil {
 				klog.ErrorS(err, "error refreshing subscription")
@@ -119,11 +120,16 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 	}
 
 	ctx = context.WithValue(ctx, messaging.TopicKey, request.Topic)
-	midl := middleware.PublisherTracingMiddleware()
 
-	return midl(func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+	pipe := messaging.Pipeline{}
+	pipe.UseMiddleware(middleware.PublisherTracingMiddleware())
+	pipe.UseMiddleware(middleware.PublisherMetricsMiddleware())
+
+	midl := pipe.Build(func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 		return publisher.Publish(request.Topic, msg)
-	})(ctx, env)
+	})
+
+	return midl(ctx, env)
 }
 
 func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.SubscribeRequest) (messaging.CloseFunc, error) {

@@ -1,4 +1,4 @@
-package healthcheck
+package diagnostics
 
 import (
 	"context"
@@ -8,10 +8,7 @@ import (
 	"time"
 )
 
-func Run(ctx context.Context, port int, options ...Option) error {
-	router := http.NewServeMux()
-	router.Handle("/healthz", HandlerFunc(options...))
-
+func Run(ctx context.Context, port int, router http.Handler) error {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: router,
@@ -22,7 +19,7 @@ func Run(ctx context.Context, port int, options ...Option) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			klog.Info("Healthz server is shutting down")
+			klog.Info("Diagnostics server is shutting down")
 			shutdownCtx, cancel := context.WithTimeout(
 				context.Background(),
 				time.Second*5,
@@ -33,11 +30,9 @@ func Run(ctx context.Context, port int, options ...Option) error {
 		}
 	}()
 
-	klog.Infof("Healthz server is listening on %s", srv.Addr)
+	klog.Infof("Diagnostics server is listening on %s", srv.Addr)
 	err := srv.ListenAndServe()
-	if err != http.ErrServerClosed {
-		klog.ErrorS(err, "Healthz server error")
-	}
+	klog.Info("Diagnostics server was closed")
 	close(doneCh)
 	return err
 }

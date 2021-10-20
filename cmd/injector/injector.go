@@ -6,8 +6,8 @@ import (
 	"k8s.io/klog/v2"
 	"log"
 	"net/http"
+	"rusi/internal/kube"
 	"rusi/pkg/injector"
-	"rusi/pkg/kube"
 )
 
 func main() {

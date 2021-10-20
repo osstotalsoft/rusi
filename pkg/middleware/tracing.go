@@ -34,7 +34,7 @@ func PublisherTracingMiddleware() messaging.Middleware {
 			defer span.End()
 
 			Inject(ctx, msg.Headers)
-			klog.V(4).InfoS("tracing middleware hit")
+			klog.V(4).InfoS("publisher tracing middleware")
 			return next(ctx, msg)
 		}
 	}
@@ -67,7 +67,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 			Inject(ctx, msg.Headers)
 
 			defer span.End()
-			klog.V(4).InfoS("tracing middleware hit")
+			klog.V(4).InfoS("subscriber tracing middleware")
 			return next(ctx, msg)
 		}
 	}
