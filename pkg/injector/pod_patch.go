@@ -45,7 +45,7 @@ const (
 	sidecarAPIGRPCPort            = 50003
 	userContainerRusiGRPCPortName = "RUSI_GRPC_PORT"
 	sidecarGRPCPortName           = "rusi-grpc"
-	sidecarDiagnosticsPortName    = "rusi-diagnostics"
+	sidecarDiagnosticsPortName    = "rusi-diag"
 	sidecarDebugPortName          = "rusi-debug"
 	defaultLogLevel               = "2"
 	apiAddress                    = "rusi-api"
