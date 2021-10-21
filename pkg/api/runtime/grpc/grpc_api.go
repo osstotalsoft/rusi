@@ -205,7 +205,7 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 				klog.V(4).InfoS("Context done before ack", "message", ctx.Err())
 				return ctx.Err()
 			case err = <-errChan:
-				klog.V(4).InfoS("Ack received", "topic", env.Subject, "Id", env.Id, "error", err)
+				klog.V(4).InfoS("Ack sent to pubsub", "topic", env.Subject, "Id", env.Id, "error", err)
 				return err
 			}
 		}
@@ -221,19 +221,22 @@ func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, s
 			klog.V(4).ErrorS(stream.Context().Err(), "stopping ack stream watcher")
 			return
 		default:
-
 			r, err := stream.Recv() //blocks
-			if err == nil {
-				if r.GetAckRequest() == nil {
-					err = errors.New("invalid ack response")
-				}
-				if r.GetAckRequest().GetError() != "" {
-					err = errors.New(r.GetAckRequest().GetError())
-				}
+			if err != nil {
+				klog.V(4).ErrorS(err, "ack stream error")
+				break
+			}
+			if r.GetAckRequest() == nil {
+				klog.V(4).InfoS("invalid ack response")
+				break
+			}
+			if r.GetAckRequest().GetError() != "" {
+				err = errors.New(r.GetAckRequest().GetError())
 			}
 
 			mu.RLock()
 			mid := r.GetAckRequest().GetMessageId()
+			klog.V(4).InfoS("Ack received for message", "Id", mid)
 			for id, ack := range subAckMap {
 				if id == mid {
 					if ack.ackHandler != nil {

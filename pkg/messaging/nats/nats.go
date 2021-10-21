@@ -241,7 +241,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 
 		//run handler concurrently
 		go func() {
-			err = handler(context.Background(), &msg)
+			err = handler(n.ctx, &msg)
 			if err == nil {
 				// we only send a successful ACK if there is no error
 				natsMsg.Ack()
@@ -345,7 +345,6 @@ func (n *natsStreamingPubSub) IsHealthy(ctx context.Context) healthcheck.HealthR
 			Description: "nats pubsub connection is closed",
 		}
 	}
-
 	return healthcheck.HealthyResult
 }
 

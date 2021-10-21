@@ -103,8 +103,8 @@ func (m *ComponentsManager) addOrUpdateComponent(spec components.Spec) (err erro
 		return
 	}
 
+	m.storeComponent(spec)
 	if err == nil {
-		m.storeComponent(spec)
 		m.publishChange(category, operation, spec)
 	}
 	return
