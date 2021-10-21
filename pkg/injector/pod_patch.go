@@ -3,12 +3,13 @@ package injector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 	"path"
 	"rusi/pkg/utils"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,19 +46,19 @@ const (
 	sidecarAPIGRPCPort            = 50003
 	userContainerRusiGRPCPortName = "RUSI_GRPC_PORT"
 	sidecarGRPCPortName           = "rusi-grpc"
-	sidecarMetricsPortName        = "rusi-metrics"
+	sidecarDiagnosticsPortName    = "rusi-diag"
 	sidecarDebugPortName          = "rusi-debug"
 	defaultLogLevel               = "2"
 	apiAddress                    = "rusi-api"
 	apiPort                       = 80
 	kubernetesMountPath           = "/var/run/secrets/kubernetes.io/serviceaccount"
-	defaultConfig                 = "rusisystem"
+	defaultConfig                 = "default"
 	defaultEnabledMetric          = true
 	defaultMetricsPort            = 9090
 	defaultSidecarDebug           = false
 	defaultSidecarDebugPort       = 40000
 
-	sidecarHealthzPort                = 8080
+	sidecarDiagnosticsPort            = 8080
 	sidecarHealthzPath                = "healthz"
 	defaultHealthzProbeDelaySeconds   = 3
 	defaultHealthzProbeTimeoutSeconds = 3
@@ -218,7 +219,7 @@ func podContainsSidecarContainer(pod *corev1.Pod) bool {
 }
 
 func getConfig(annotations map[string]string) string {
-	return getStringAnnotation(annotations, rusiConfigKey)
+	return getStringAnnotationOrDefault(annotations, rusiConfigKey, defaultConfig)
 }
 
 func getEnableDebug(annotations map[string]string) bool {
@@ -340,6 +341,10 @@ func getResourceRequirements(annotations map[string]string) (*corev1.ResourceReq
 	return nil, nil
 }
 
+func getEnableMetrics(annotations map[string]string) bool {
+	return getBoolAnnotationOrDefault(annotations, rusiEnableMetricsKey, defaultEnabledMetric)
+}
+
 func getMetricsPort(annotations map[string]string) int {
 	return int(getInt32AnnotationOrDefault(annotations, rusiMetricsPortKey, defaultMetricsPort))
 }
@@ -364,23 +369,20 @@ func getPullPolicy(pullPolicy string) corev1.PullPolicy {
 func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, imagePullPolicy,
 	namespace, controlPlaneAddress string, tokenVolumeMount *corev1.VolumeMount) (*corev1.Container, error) {
 
-	metricsPort := getMetricsPort(annotations)
+	metricsEnabled := getEnableMetrics(annotations)
 	pullPolicy := getPullPolicy(imagePullPolicy)
-	httpHandler := getProbeHTTPHandler(sidecarHealthzPort, sidecarHealthzPath)
+	httpHandler := getProbeHTTPHandler(sidecarDiagnosticsPort, sidecarHealthzPath)
 
 	allowPrivilegeEscalation := false
 
 	ports := []corev1.ContainerPort{
 		{
-			ContainerPort: int32(sidecarAPIGRPCPort),
+			ContainerPort: sidecarAPIGRPCPort,
 			Name:          sidecarGRPCPortName,
 		},
 		{
-			ContainerPort: int32(metricsPort),
-			Name:          sidecarMetricsPortName,
-		},
-		{
-			ContainerPort: sidecarHealthzPort,
+			ContainerPort: sidecarDiagnosticsPort,
+			Name:          sidecarDiagnosticsPortName,
 		},
 	}
 
@@ -393,6 +395,7 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 		"--v", getLogLevel(annotations),
 		"--control-plane-address", controlPlaneAddress,
 		"--config", getConfig(annotations),
+		fmt.Sprintf("--enable-metrics=%t", metricsEnabled),
 	}
 
 	debugEnabled := getEnableDebug(annotations)
