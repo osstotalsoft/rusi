@@ -3,12 +3,13 @@ package injector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 	"path"
 	"rusi/pkg/utils"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +52,7 @@ const (
 	apiAddress                    = "rusi-api"
 	apiPort                       = 80
 	kubernetesMountPath           = "/var/run/secrets/kubernetes.io/serviceaccount"
-	defaultConfig                 = "rusisystem"
+	defaultConfig                 = "default"
 	defaultEnabledMetric          = true
 	defaultMetricsPort            = 9090
 	defaultSidecarDebug           = false
@@ -218,7 +219,7 @@ func podContainsSidecarContainer(pod *corev1.Pod) bool {
 }
 
 func getConfig(annotations map[string]string) string {
-	return getStringAnnotation(annotations, rusiConfigKey)
+	return getStringAnnotationOrDefault(annotations, rusiConfigKey, defaultConfig)
 }
 
 func getEnableDebug(annotations map[string]string) bool {
