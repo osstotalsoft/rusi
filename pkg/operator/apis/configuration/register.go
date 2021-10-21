@@ -1,5 +1,5 @@
 package configuration
 
 const (
-	GroupName = "rusi.io"
+	GroupName = "configuration.rusi.io"
 )

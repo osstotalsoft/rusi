@@ -1,4 +1,4 @@
 // +k8s:deepcopy-gen=package
-// +groupName=rusi.io
+// +groupName=configuration.rusi.io
 
 package v1alpha1

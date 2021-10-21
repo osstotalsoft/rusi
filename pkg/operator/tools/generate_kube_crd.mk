@@ -5,7 +5,11 @@ TOOLS_DIR?=pkg/operator/tools
 
 generate-crd:
 	$(CODE_GENERATOR_DIR)/generate-groups.sh all rusi/pkg/operator/client rusi/pkg/operator/apis \
-    	  "components:v1alpha1 configuration:v1alpha1 subscriptions:v1alpha1" \
+    	  "components:v1alpha1 configuration:v1alpha1" \
     	  -h $(TOOLS_DIR)/boilerplate.go.txt
 
+	cp -rf ./rusi/pkg/ ./
+
+	rm -rf ./rusi/
+	
 	#$(TOOLS_DIR)/update-codegen.sh

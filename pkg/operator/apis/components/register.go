@@ -1,5 +1,5 @@
 package components
 
 const (
-	GroupName = "rusi.io"
+	GroupName = "components.rusi.io"
 )
