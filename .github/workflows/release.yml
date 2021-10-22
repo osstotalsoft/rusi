@@ -19,12 +19,13 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
+    env:
+      ARTIFACT_DIR: ./release
+      HELM_PACKAGE_DIR: helm
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -60,3 +61,38 @@ jobs:
           RUSI_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           RUSI_TAG: ${{ env.RELEASE_VERSION }}
         run: make docker-push
+
+      - name: Package Helm chart
+        if: ${{ env.LATEST_RELEASE }} == "true"
+        env:
+          HELM_CHARTS_DIR: helm
+        run: |
+          mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+          helm package ${{ env.HELM_CHARTS_DIR }} --app-version ${{ env.RELEASE_VERSION }} --version ${{ env.RELEASE_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+          
+      - name: Checkout Helm Charts Repo
+        uses: actions/checkout@v2
+        env:
+          HELM_REPO: osstotalsoft/helm-charts
+          HELM_REPO_CODE_PATH: helm-charts
+        with:
+          repository: ${{ env.HELM_REPO }}
+          ref: refs/heads/main
+          token: ${{ secrets.BOT_TOKEN }}
+          path: ${{ env.HELM_REPO_CODE_PATH }}
+
+      - name: Upload helm charts to Helm Repo
+        env:
+          HELM_REPO_CODE_PATH: helm-charts
+          HELM_REPO: https://osstotalsoft.github.io/helm-charts/
+        run: |
+          cd ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+          cp -r * $GITHUB_WORKSPACE/${{ env.HELM_REPO_CODE_PATH }}
+          cd $GITHUB_WORKSPACE/${{ env.HELM_REPO_CODE_PATH }}
+          helm repo index --url ${{ env.HELM_REPO }} --merge index.yaml .
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions"
+          git add --all
+          git commit -m "Rusi release - ${{ env.RELEASE_VERSION }}"
+          git push
+          
