@@ -255,12 +255,6 @@ func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, s
 
 func (srv *rusiServerImpl) Publish(ctx context.Context, request *v1.PublishRequest) (*emptypb.Empty, error) {
 
-	if request.PubsubName == "" {
-		err := status.Error(codes.InvalidArgument, runtime.ErrPubsubEmpty)
-		klog.ErrorS(err, "missing pubsub name")
-		return &emptypb.Empty{}, err
-	}
-
 	if request.Topic == "" {
 		err := status.Errorf(codes.InvalidArgument, runtime.ErrTopicEmpty, request.PubsubName)
 		klog.ErrorS(err, "missing topic")

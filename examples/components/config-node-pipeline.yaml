@@ -13,3 +13,5 @@ spec:
     handlers:
     - name: pubsub-uppercase
       type: middleware.pubsub.uppercase
+  pubSub:
+    name: natsstreaming-pubsub

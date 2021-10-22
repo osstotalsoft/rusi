@@ -35,6 +35,8 @@ type ConfigurationSpec struct {
 	Features []FeatureSpec `json:"features,omitempty"`
 	// +optional
 	APISpec APISpec `json:"api,omitempty"`
+	// +optional
+	PubSubSpec PubSubSpec `json:"pubSub,omitempty"`
 }
 
 // APISpec describes the configuration for Rusi APIs.
@@ -120,6 +122,11 @@ type AccessControlSpec struct {
 type FeatureSpec struct {
 	Name    string `json:"name" yaml:"name"`
 	Enabled bool   `json:"enabled" yaml:"enabled"`
+}
+
+// PubSubSpec defines default pubSub configuration.
+type PubSubSpec struct {
+	Name string `json:"name" yaml:"name"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

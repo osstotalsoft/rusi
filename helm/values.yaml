@@ -1,6 +1,6 @@
 global:
   registry: ghcr.io/osstotalsoft/rusi
-  tag: "0.0.9"
+  tag: "0.0.29"
   dnsSuffix: ".cluster.local"
   imagePullPolicy: IfNotPresent
   imagePullSecrets: "registrykey"
