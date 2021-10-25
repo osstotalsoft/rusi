@@ -2,10 +2,11 @@ package loader
 
 import (
 	"context"
-	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"rusi/pkg/custom-resource/configuration"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 // LoadDefaultConfiguration returns the default config.
@@ -20,6 +21,9 @@ func LoadDefaultConfiguration() configuration.Spec {
 		AccessControlSpec: configuration.AccessControlSpec{
 			DefaultAction: configuration.AllowAccess,
 			TrustDomain:   configuration.DefaultTrustDomain,
+		},
+		PubSubSpec: configuration.PubSubSpec{
+			Name: "",
 		},
 	}
 }

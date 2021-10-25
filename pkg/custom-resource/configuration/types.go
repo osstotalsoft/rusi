@@ -21,6 +21,7 @@ type Spec struct {
 	AccessControlSpec      AccessControlSpec `json:"accessControl,omitempty" yaml:"accessControl,omitempty"`
 	Features               []FeatureSpec     `json:"features,omitempty" yaml:"features,omitempty"`
 	APISpec                APISpec           `json:"api,omitempty" yaml:"api,omitempty"`
+	PubSubSpec             PubSubSpec        `json:"pubSub,omitempty" yaml:"pubSub,omitempty"`
 }
 
 // APISpec describes the configuration for Rusi APIs.
@@ -97,4 +98,8 @@ type AccessControlSpec struct {
 type FeatureSpec struct {
 	Name    Feature `json:"name" yaml:"name"`
 	Enabled bool    `json:"enabled" yaml:"enabled"`
+}
+
+type PubSubSpec struct {
+	Name string `json:"name" yaml:"name"`
 }

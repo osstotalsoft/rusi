@@ -26,6 +26,15 @@ rusi
 - Debug: 
     - install delve debug tool: dlv-dap - suggested by vs-code
     - debug with vscode :> Run sidecar
+- Test:
+    - install gcc
+        ```shell
+        choco install mingw
+        ```
+    - test with make
+        ```shell
+        make test
+        ```
 	
 ## Usage
 

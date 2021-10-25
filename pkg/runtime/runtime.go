@@ -3,9 +3,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 	"reflect"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/custom-resource/components"
@@ -15,6 +12,10 @@ import (
 	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 )
 
 type runtime struct {
@@ -105,9 +106,19 @@ func (rt *runtime) buildSubscriberPipeline() (pipeline messaging.Pipeline, err e
 }
 
 func (rt *runtime) PublishHandler(ctx context.Context, request messaging.PublishRequest) error {
-	publisher := rt.componentsManager.GetPublisher(request.PubsubName)
+	var pubSubName string
+	if request.PubsubName != "" {
+		pubSubName = request.PubsubName
+	} else {
+		pubSubName = rt.appConfig.PubSubSpec.Name
+	}
+	if pubSubName == "" {
+		return errors.New("PubSubName is empty. Please provide a valid pubSub name in the publish request or via configuration.")
+	}
+
+	publisher := rt.componentsManager.GetPublisher(pubSubName)
 	if publisher == nil {
-		return errors.New(fmt.Sprintf(runtime_api.ErrPubsubNotFound, request.PubsubName))
+		return errors.New(fmt.Sprintf(runtime_api.ErrPubsubNotFound, pubSubName))
 	}
 	env := &messaging.MessageEnvelope{
 		Id:              uuid.New().String(),
@@ -133,9 +144,19 @@ func (rt *runtime) PublishHandler(ctx context.Context, request messaging.Publish
 }
 
 func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.SubscribeRequest) (messaging.CloseFunc, error) {
-	subs := rt.componentsManager.GetSubscriber(request.PubsubName)
+	var pubSubName string
+	if request.PubsubName != "" {
+		pubSubName = request.PubsubName
+	} else {
+		pubSubName = rt.appConfig.PubSubSpec.Name
+	}
+	if pubSubName == "" {
+		return nil, errors.New("PubSubName is empty. Please provide a valid pubSub name in the subscribe request or via configuration.")
+	}
+
+	subs := rt.componentsManager.GetSubscriber(pubSubName)
 	if subs == nil {
-		err := errors.New(fmt.Sprintf("cannot find PubsubName named %s", request.PubsubName))
+		err := errors.New(fmt.Sprintf("cannot find PubsubName named %s", pubSubName))
 		klog.ErrorS(err, err.Error())
 		return nil, err
 	}

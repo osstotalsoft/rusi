@@ -2,11 +2,12 @@ package loader
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"io/fs"
 	"os"
 	"rusi/pkg/custom-resource/configuration"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadStandaloneConfiguration(t *testing.T) {
@@ -21,7 +22,9 @@ spec:
     - name: "feature1"
       enabled: true
     - name: "feature2"
-      enabled: false`)
+      enabled: false
+  pubSub:
+    name: natsstreaming-pubsub`)
 
 	writeFile("env_variables_config.yaml", `
 kind: Configuration
@@ -86,6 +89,7 @@ spec:
 		assert.False(t, config.Features[1].Enabled)
 		assert.Equal(t, configuration.Feature("feature1"), config.Features[0].Name)
 		assert.Equal(t, configuration.Feature("feature2"), config.Features[1].Name)
+		assert.Equal(t, config.PubSubSpec.Name, "natsstreaming-pubsub")
 	})
 }
 

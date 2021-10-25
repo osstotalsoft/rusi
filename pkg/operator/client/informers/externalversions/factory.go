@@ -21,9 +21,8 @@ package externalversions
 import (
 	reflect "reflect"
 	versioned "rusi/pkg/operator/client/clientset/versioned"
-	components "rusi/pkg/operator/client/informers/externalversions/components"
-	configuration "rusi/pkg/operator/client/informers/externalversions/configuration"
 	internalinterfaces "rusi/pkg/operator/client/informers/externalversions/internalinterfaces"
+	rusi "rusi/pkg/operator/client/informers/externalversions/rusi"
 	sync "sync"
 	time "time"
 
@@ -173,14 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Components() components.Interface
-	Configuration() configuration.Interface
+	Rusi() rusi.Interface
 }
 
-func (f *sharedInformerFactory) Components() components.Interface {
-	return components.New(f, f.namespace, f.tweakListOptions)
-}
-
-func (f *sharedInformerFactory) Configuration() configuration.Interface {
-	return configuration.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Rusi() rusi.Interface {
+	return rusi.New(f, f.namespace, f.tweakListOptions)
 }

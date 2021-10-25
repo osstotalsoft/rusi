@@ -20,10 +20,8 @@ package fake
 
 import (
 	clientset "rusi/pkg/operator/client/clientset/versioned"
-	componentsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/components/v1alpha1"
-	fakecomponentsv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/components/v1alpha1/fake"
-	configurationv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/configuration/v1alpha1"
-	fakeconfigurationv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/configuration/v1alpha1/fake"
+	rusiv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/rusi/v1alpha1"
+	fakerusiv1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/rusi/v1alpha1/fake"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -82,12 +80,7 @@ var (
 	_ testing.FakeClient  = &Clientset{}
 )
 
-// ComponentsV1alpha1 retrieves the ComponentsV1alpha1Client
-func (c *Clientset) ComponentsV1alpha1() componentsv1alpha1.ComponentsV1alpha1Interface {
-	return &fakecomponentsv1alpha1.FakeComponentsV1alpha1{Fake: &c.Fake}
-}
-
-// ConfigurationV1alpha1 retrieves the ConfigurationV1alpha1Client
-func (c *Clientset) ConfigurationV1alpha1() configurationv1alpha1.ConfigurationV1alpha1Interface {
-	return &fakeconfigurationv1alpha1.FakeConfigurationV1alpha1{Fake: &c.Fake}
+// RusiV1alpha1 retrieves the RusiV1alpha1Client
+func (c *Clientset) RusiV1alpha1() rusiv1alpha1.RusiV1alpha1Interface {
+	return &fakerusiv1alpha1.FakeRusiV1alpha1{Fake: &c.Fake}
 }
