@@ -67,6 +67,7 @@ jobs:
         env:
           HELM_CHARTS_DIR: helm
         run: |
+          sed -i "/  tag:/c\  tag: \"${{ env.RELEASE_VERSION }}\"" ${{ env.HELM_CHARTS_DIR }}/values.yaml
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
           helm package ${{ env.HELM_CHARTS_DIR }} --app-version ${{ env.RELEASE_VERSION }} --version ${{ env.RELEASE_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
           
