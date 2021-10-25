@@ -27,72 +27,6 @@ spec:
             spec:
               description: ConfigurationSpec is the spec for an configuration
               properties:
-                accessControl:
-                  description: AccessControlSpec is the spec object in ConfigurationSpec
-                  properties:
-                    defaultAction:
-                      type: string
-                    policies:
-                      items:
-                        description:
-                          AppPolicySpec defines the policy data structure
-                          for each app
-                        properties:
-                          appId:
-                            type: string
-                          defaultAction:
-                            type: string
-                          namespace:
-                            type: string
-                          operations:
-                            items:
-                              description:
-                                AppOperationAction defines the data structure
-                                for each app operation
-                              properties:
-                                action:
-                                  type: string
-                                httpVerb:
-                                  items:
-                                    type: string
-                                  type: array
-                                name:
-                                  type: string
-                              required:
-                                - action
-                                - name
-                              type: object
-                            type: array
-                          trustDomain:
-                            type: string
-                        required:
-                          - appId
-                        type: object
-                      type: array
-                    trustDomain:
-                      type: string
-                  type: object
-                api:
-                  description: APISpec describes the configuration for Rusi APIs
-                  properties:
-                    allowed:
-                      items:
-                        description:
-                          APIAccessRule describes an access rule for allowing
-                          a Rusi API to be enabled and accessible by an app
-                        properties:
-                          name:
-                            type: string
-                          protocol:
-                            type: string
-                          version:
-                            type: string
-                        required:
-                          - name
-                          - version
-                        type: object
-                      type: array
-                  type: object
                 features:
                   items:
                     description: FeatureSpec defines the features that are enabled/disabled
@@ -144,23 +78,9 @@ spec:
                   required:
                     - handlers
                   type: object
-                mtls:
-                  description: MTLSSpec defines mTLS configuration
-                  properties:
-                    allowedClockSkew:
-                      type: string
-                    enabled:
-                      type: boolean
-                    workloadCertTTL:
-                      type: string
-                  required:
-                    - enabled
-                  type: object
                 tracing:
                   description: TracingSpec is the spec object in ConfigurationSpec
                   properties:
-                    samplingRate:
-                      type: string
                     zipkin:
                       type: object
                       description: Defines the Zipkin trace configurations
@@ -169,17 +89,7 @@ spec:
                           description: The endpoint address of Zipkin server to receive traces
                           type: string
                   required:
-                    - samplingRate
-                  type: object
-                metric:
-                  default:
-                    enabled: true
-                  description: MetricSpec defines metrics configuration
-                  properties:
-                    enabled:
-                      type: boolean
-                  required:
-                    - enabled
+                    - zipkin
                   type: object
                 pubSub:
                   description: Defines the default pubSub

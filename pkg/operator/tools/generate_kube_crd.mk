@@ -1,5 +1,5 @@
-#CODE_GENERATOR_DIR?=/d/GoProjects/pkg/mod/k8s.io/code-generator\@v0.22.1
-CODE_GENERATOR_DIR?=~/go/pkg/mod/k8s.io/code-generator@v0.22.1
+#CODE_GENERATOR_DIR?=/d/GoProjects/pkg/mod/k8s.io/code-generator\@v0.22.2
+CODE_GENERATOR_DIR?=~/go/pkg/mod/k8s.io/code-generator@v0.22.2
 TOOLS_DIR?=pkg/operator/tools
 
 generate-crd:

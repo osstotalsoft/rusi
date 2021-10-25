@@ -12,16 +12,7 @@ import (
 // LoadDefaultConfiguration returns the default config.
 func LoadDefaultConfiguration() configuration.Spec {
 	return configuration.Spec{
-		TracingSpec: configuration.TracingSpec{
-			SamplingRate: "",
-		},
-		MetricSpec: configuration.MetricSpec{
-			Enabled: true,
-		},
-		AccessControlSpec: configuration.AccessControlSpec{
-			DefaultAction: configuration.AllowAccess,
-			TrustDomain:   configuration.DefaultTrustDomain,
-		},
+		TracingSpec: configuration.TracingSpec{},
 		PubSubSpec: configuration.PubSubSpec{
 			Name: "",
 		},

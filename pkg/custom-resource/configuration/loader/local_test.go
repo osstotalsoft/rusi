@@ -82,8 +82,6 @@ spec:
 		config := <-configChan
 		assert.NoError(t, err, "Unexpected error")
 		assert.NotNil(t, config, "Config not loaded as expected")
-		assert.True(t, config.MetricSpec.Enabled)
-		assert.True(t, config.MTLSSpec.Enabled)
 		assert.Len(t, config.Features, 2)
 		assert.True(t, config.Features[0].Enabled)
 		assert.False(t, config.Features[1].Enabled)
