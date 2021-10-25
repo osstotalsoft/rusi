@@ -1,4 +1,4 @@
-package components
+package rusi
 
 const (
 	GroupName = "rusi.io"
