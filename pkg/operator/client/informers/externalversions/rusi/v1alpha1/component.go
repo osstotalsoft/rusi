@@ -20,10 +20,10 @@ package v1alpha1
 
 import (
 	"context"
-	componentsv1alpha1 "rusi/pkg/operator/apis/components/v1alpha1"
+	rusiv1alpha1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 	versioned "rusi/pkg/operator/client/clientset/versioned"
 	internalinterfaces "rusi/pkg/operator/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "rusi/pkg/operator/client/listers/components/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/client/listers/rusi/v1alpha1"
 	time "time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,16 +62,16 @@ func NewFilteredComponentInformer(client versioned.Interface, namespace string, 
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ComponentsV1alpha1().Components(namespace).List(context.TODO(), options)
+				return client.RusiV1alpha1().Components(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ComponentsV1alpha1().Components(namespace).Watch(context.TODO(), options)
+				return client.RusiV1alpha1().Components(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&componentsv1alpha1.Component{},
+		&rusiv1alpha1.Component{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,7 +82,7 @@ func (f *componentInformer) defaultInformer(client versioned.Interface, resyncPe
 }
 
 func (f *componentInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&componentsv1alpha1.Component{}, f.defaultInformer)
+	return f.factory.InformerFor(&rusiv1alpha1.Component{}, f.defaultInformer)
 }
 
 func (f *componentInformer) Lister() v1alpha1.ComponentLister {

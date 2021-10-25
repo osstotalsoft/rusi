@@ -19,23 +19,27 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/components/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/client/clientset/versioned/typed/rusi/v1alpha1"
 
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeComponentsV1alpha1 struct {
+type FakeRusiV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeComponentsV1alpha1) Components(namespace string) v1alpha1.ComponentInterface {
+func (c *FakeRusiV1alpha1) Components(namespace string) v1alpha1.ComponentInterface {
 	return &FakeComponents{c, namespace}
+}
+
+func (c *FakeRusiV1alpha1) Configurations(namespace string) v1alpha1.ConfigurationInterface {
+	return &FakeConfigurations{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeComponentsV1alpha1) RESTClient() rest.Interface {
+func (c *FakeRusiV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

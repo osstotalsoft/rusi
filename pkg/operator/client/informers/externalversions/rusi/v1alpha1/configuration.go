@@ -20,10 +20,10 @@ package v1alpha1
 
 import (
 	"context"
-	configurationv1alpha1 "rusi/pkg/operator/apis/configuration/v1alpha1"
+	rusiv1alpha1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 	versioned "rusi/pkg/operator/client/clientset/versioned"
 	internalinterfaces "rusi/pkg/operator/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "rusi/pkg/operator/client/listers/configuration/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/client/listers/rusi/v1alpha1"
 	time "time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,16 +62,16 @@ func NewFilteredConfigurationInformer(client versioned.Interface, namespace stri
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ConfigurationV1alpha1().Configurations(namespace).List(context.TODO(), options)
+				return client.RusiV1alpha1().Configurations(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ConfigurationV1alpha1().Configurations(namespace).Watch(context.TODO(), options)
+				return client.RusiV1alpha1().Configurations(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&configurationv1alpha1.Configuration{},
+		&rusiv1alpha1.Configuration{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,7 +82,7 @@ func (f *configurationInformer) defaultInformer(client versioned.Interface, resy
 }
 
 func (f *configurationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&configurationv1alpha1.Configuration{}, f.defaultInformer)
+	return f.factory.InformerFor(&rusiv1alpha1.Configuration{}, f.defaultInformer)
 }
 
 func (f *configurationInformer) Lister() v1alpha1.ConfigurationLister {

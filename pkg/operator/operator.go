@@ -2,27 +2,27 @@ package operator
 
 import (
 	"fmt"
-	"google.golang.org/grpc"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog/v2"
 	"net"
 	"rusi/internal/kube"
-	compv1 "rusi/pkg/operator/apis/components/v1alpha1"
-	configv1 "rusi/pkg/operator/apis/configuration/v1alpha1"
+	rusiv1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 	"rusi/pkg/operator/client/clientset/versioned"
 	"rusi/pkg/operator/client/informers/externalversions"
 	operatorv1 "rusi/pkg/proto/operator/v1"
 	"sync"
+
+	"google.golang.org/grpc"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 )
 
 const serverPort = 6500
 
 type objectWatcher struct {
-	componentsMap     map[string]compv1.Component
-	configurationsMap map[string]configv1.Configuration
+	componentsMap     map[string]rusiv1.Component
+	configurationsMap map[string]rusiv1.Configuration
 	mu                sync.RWMutex
-	compChans         []chan compv1.Component
-	configChans       []chan configv1.Configuration
+	compChans         []chan rusiv1.Component
+	configChans       []chan rusiv1.Configuration
 }
 
 func Run() {
@@ -52,42 +52,42 @@ func Run() {
 
 func newObjectWatcher() *objectWatcher {
 	return &objectWatcher{
-		componentsMap:     map[string]compv1.Component{},
-		configurationsMap: map[string]configv1.Configuration{},
+		componentsMap:     map[string]rusiv1.Component{},
+		configurationsMap: map[string]rusiv1.Configuration{},
 		mu:                sync.RWMutex{},
-		compChans:         []chan compv1.Component{},
-		configChans:       []chan configv1.Configuration{},
+		compChans:         []chan rusiv1.Component{},
+		configChans:       []chan rusiv1.Configuration{},
 	}
 }
 
 func (ow *objectWatcher) startWatchingForComponents(factory externalversions.SharedInformerFactory) {
-	informer := factory.Components().V1alpha1().Components().Informer()
+	informer := factory.Rusi().V1alpha1().Components().Informer()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			comp := obj.(*compv1.Component)
+			comp := obj.(*rusiv1.Component)
 			klog.V(4).InfoS("component added", "name", comp.Name, "namespace", comp.Namespace)
 			ow.updateComponent(*comp)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			comp := newObj.(*compv1.Component)
+			comp := newObj.(*rusiv1.Component)
 			klog.V(4).InfoS("component updated", "name", comp.Name, "namespace", comp.Namespace)
 			ow.updateComponent(*comp)
 		},
 		DeleteFunc: func(obj interface{}) {
-			comp := obj.(*compv1.Component)
+			comp := obj.(*rusiv1.Component)
 			klog.V(4).InfoS("component deleted", "name", comp.Name, "namespace", comp.Namespace)
 		},
 	})
 }
 
-func (ow *objectWatcher) updateComponent(comp compv1.Component) {
+func (ow *objectWatcher) updateComponent(comp rusiv1.Component) {
 	ow.mu.Lock()
 	ow.componentsMap[string(comp.UID)] = comp
 	ow.mu.Unlock()
 	ow.componentChange(comp)
 }
 
-func (ow *objectWatcher) componentChange(comp compv1.Component) {
+func (ow *objectWatcher) componentChange(comp rusiv1.Component) {
 	ow.mu.RLock()
 	defer ow.mu.RUnlock()
 	klog.V(4).InfoS("publishing component change", "subscribers", len(ow.compChans))
@@ -101,33 +101,33 @@ func (ow *objectWatcher) componentChange(comp compv1.Component) {
 }
 
 func (ow *objectWatcher) startWatchingForConfigurations(factory externalversions.SharedInformerFactory) {
-	informer := factory.Configuration().V1alpha1().Configurations().Informer()
+	informer := factory.Rusi().V1alpha1().Configurations().Informer()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			comp := obj.(*configv1.Configuration)
+			comp := obj.(*rusiv1.Configuration)
 			klog.V(4).InfoS("configuration added", "name", comp.Name, "namespace", comp.Namespace)
 			ow.updateConfiguration(*comp)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			comp := newObj.(*configv1.Configuration)
+			comp := newObj.(*rusiv1.Configuration)
 			klog.V(4).InfoS("configuration updated", "name", comp.Name, "namespace", comp.Namespace)
 			ow.updateConfiguration(*comp)
 		},
 		DeleteFunc: func(obj interface{}) {
-			comp := obj.(*configv1.Configuration)
+			comp := obj.(*rusiv1.Configuration)
 			klog.V(4).InfoS("configuration deleted", "name", comp.Name, "namespace", comp.Namespace)
 		},
 	})
 }
 
-func (ow *objectWatcher) updateConfiguration(comp configv1.Configuration) {
+func (ow *objectWatcher) updateConfiguration(comp rusiv1.Configuration) {
 	ow.mu.Lock()
 	ow.configurationsMap[string(comp.UID)] = comp
 	ow.mu.Unlock()
 	ow.configurationChange(comp)
 }
 
-func (ow *objectWatcher) configurationChange(comp configv1.Configuration) {
+func (ow *objectWatcher) configurationChange(comp rusiv1.Configuration) {
 	ow.mu.RLock()
 	defer ow.mu.RUnlock()
 	klog.V(4).InfoS("publishing configuration change", "subscribers", len(ow.configChans))
@@ -140,20 +140,20 @@ func (ow *objectWatcher) configurationChange(comp configv1.Configuration) {
 	}
 }
 
-func (ow *objectWatcher) addComponentListener(c chan compv1.Component) {
+func (ow *objectWatcher) addComponentListener(c chan rusiv1.Component) {
 	ow.mu.Lock()
 	ow.compChans = append(ow.compChans, c)
 	ow.mu.Unlock()
 	go ow.replayComponents(c)
 }
-func (ow *objectWatcher) addConfigurationListener(c chan configv1.Configuration) {
+func (ow *objectWatcher) addConfigurationListener(c chan rusiv1.Configuration) {
 	ow.mu.Lock()
 	ow.configChans = append(ow.configChans, c)
 	ow.mu.Unlock()
 	go ow.replayConfigs(c)
 }
 
-func (ow *objectWatcher) replayConfigs(c chan configv1.Configuration) {
+func (ow *objectWatcher) replayConfigs(c chan rusiv1.Configuration) {
 	ow.mu.RLock()
 	defer ow.mu.RUnlock()
 	for _, item := range ow.configurationsMap {
@@ -161,7 +161,7 @@ func (ow *objectWatcher) replayConfigs(c chan configv1.Configuration) {
 	}
 }
 
-func (ow *objectWatcher) replayComponents(c chan compv1.Component) {
+func (ow *objectWatcher) replayComponents(c chan rusiv1.Component) {
 	ow.mu.RLock()
 	defer ow.mu.RUnlock()
 	for _, item := range ow.componentsMap {
@@ -169,11 +169,11 @@ func (ow *objectWatcher) replayComponents(c chan compv1.Component) {
 	}
 }
 
-func (ow *objectWatcher) removeComponentListener(c chan compv1.Component) {
+func (ow *objectWatcher) removeComponentListener(c chan rusiv1.Component) {
 	ow.mu.Lock()
 	defer ow.mu.Unlock()
 
-	var list []chan compv1.Component
+	var list []chan rusiv1.Component
 	for _, compChan := range ow.compChans {
 		if compChan != c {
 			list = append(list, compChan)
@@ -182,11 +182,11 @@ func (ow *objectWatcher) removeComponentListener(c chan compv1.Component) {
 	ow.compChans = list
 }
 
-func (ow *objectWatcher) removeConfigurationListener(c chan configv1.Configuration) {
+func (ow *objectWatcher) removeConfigurationListener(c chan rusiv1.Configuration) {
 	ow.mu.Lock()
 	defer ow.mu.Unlock()
 
-	var list []chan configv1.Configuration
+	var list []chan rusiv1.Configuration
 	for _, compChan := range ow.configChans {
 		if compChan != c {
 			list = append(list, compChan)

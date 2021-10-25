@@ -20,7 +20,7 @@ package v1alpha1
 
 import (
 	"context"
-	v1alpha1 "rusi/pkg/operator/apis/configuration/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 	scheme "rusi/pkg/operator/client/clientset/versioned/scheme"
 	"time"
 
@@ -56,7 +56,7 @@ type configurations struct {
 }
 
 // newConfigurations returns a Configurations
-func newConfigurations(c *ConfigurationV1alpha1Client, namespace string) *configurations {
+func newConfigurations(c *RusiV1alpha1Client, namespace string) *configurations {
 	return &configurations{
 		client: c.RESTClient(),
 		ns:     namespace,

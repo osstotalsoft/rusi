@@ -20,7 +20,7 @@ package fake
 
 import (
 	"context"
-	v1alpha1 "rusi/pkg/operator/apis/configuration/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -32,13 +32,13 @@ import (
 
 // FakeConfigurations implements ConfigurationInterface
 type FakeConfigurations struct {
-	Fake *FakeConfigurationV1alpha1
+	Fake *FakeRusiV1alpha1
 	ns   string
 }
 
-var configurationsResource = schema.GroupVersionResource{Group: "configuration.rusi.io", Version: "v1alpha1", Resource: "configurations"}
+var configurationsResource = schema.GroupVersionResource{Group: "rusi.io", Version: "v1alpha1", Resource: "configurations"}
 
-var configurationsKind = schema.GroupVersionKind{Group: "configuration.rusi.io", Version: "v1alpha1", Kind: "Configuration"}
+var configurationsKind = schema.GroupVersionKind{Group: "rusi.io", Version: "v1alpha1", Kind: "Configuration"}
 
 // Get takes name of the configuration, and returns the corresponding configuration object, and an error if there is any.
 func (c *FakeConfigurations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Configuration, err error) {

@@ -1,14 +1,14 @@
 package operator
 
 import (
+	"rusi/pkg/custom-resource/components"
+	rusiv1 "rusi/pkg/operator/apis/rusi/v1alpha1"
+	operatorv1 "rusi/pkg/proto/operator/v1"
+	"strings"
+
 	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"k8s.io/klog/v2"
-	"rusi/pkg/custom-resource/components"
-	compv1 "rusi/pkg/operator/apis/components/v1alpha1"
-	configv1 "rusi/pkg/operator/apis/configuration/v1alpha1"
-	operatorv1 "rusi/pkg/proto/operator/v1"
-	"strings"
 )
 
 type operatorServer struct {
@@ -16,7 +16,7 @@ type operatorServer struct {
 }
 
 func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigurationRequest, stream operatorv1.RusiOperator_WatchConfigurationServer) error {
-	c := make(chan configv1.Configuration)
+	c := make(chan rusiv1.Configuration)
 	opsrv.ow.addConfigurationListener(c)
 	defer opsrv.ow.removeConfigurationListener(c)
 
@@ -37,7 +37,7 @@ func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigu
 }
 
 func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponentsRequest, stream operatorv1.RusiOperator_WatchComponentsServer) error {
-	c := make(chan compv1.Component)
+	c := make(chan rusiv1.Component)
 	opsrv.ow.addComponentListener(c)
 	defer opsrv.ow.removeComponentListener(c)
 
@@ -57,7 +57,7 @@ func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponents
 	}
 }
 
-func convertToComponent(item compv1.Component) components.Spec {
+func convertToComponent(item rusiv1.Component) components.Spec {
 	return components.Spec{
 		Name:     item.Name,
 		Type:     item.Spec.Type,
@@ -67,7 +67,7 @@ func convertToComponent(item compv1.Component) components.Spec {
 	}
 }
 
-func convertMetadataItemsToProperties(items []compv1.MetadataItem) map[string]string {
+func convertMetadataItemsToProperties(items []rusiv1.MetadataItem) map[string]string {
 	properties := map[string]string{}
 	for _, c := range items {
 		val := c.Value.String()

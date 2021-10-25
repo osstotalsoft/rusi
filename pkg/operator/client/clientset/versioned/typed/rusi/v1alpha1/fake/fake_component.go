@@ -20,7 +20,7 @@ package fake
 
 import (
 	"context"
-	v1alpha1 "rusi/pkg/operator/apis/components/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -32,13 +32,13 @@ import (
 
 // FakeComponents implements ComponentInterface
 type FakeComponents struct {
-	Fake *FakeComponentsV1alpha1
+	Fake *FakeRusiV1alpha1
 	ns   string
 }
 
-var componentsResource = schema.GroupVersionResource{Group: "components.rusi.io", Version: "v1alpha1", Resource: "components"}
+var componentsResource = schema.GroupVersionResource{Group: "rusi.io", Version: "v1alpha1", Resource: "components"}
 
-var componentsKind = schema.GroupVersionKind{Group: "components.rusi.io", Version: "v1alpha1", Kind: "Component"}
+var componentsKind = schema.GroupVersionKind{Group: "rusi.io", Version: "v1alpha1", Kind: "Component"}
 
 // Get takes name of the component, and returns the corresponding component object, and an error if there is any.
 func (c *FakeComponents) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Component, err error) {

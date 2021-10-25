@@ -20,7 +20,7 @@ package v1alpha1
 
 import (
 	"context"
-	v1alpha1 "rusi/pkg/operator/apis/components/v1alpha1"
+	v1alpha1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 	scheme "rusi/pkg/operator/client/clientset/versioned/scheme"
 	"time"
 
@@ -56,7 +56,7 @@ type components struct {
 }
 
 // newComponents returns a Components
-func newComponents(c *ComponentsV1alpha1Client, namespace string) *components {
+func newComponents(c *RusiV1alpha1Client, namespace string) *components {
 	return &components{
 		client: c.RESTClient(),
 		ns:     namespace,
