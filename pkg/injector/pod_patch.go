@@ -52,7 +52,7 @@ const (
 	apiAddress                    = "rusi-api"
 	apiPort                       = 80
 	kubernetesMountPath           = "/var/run/secrets/kubernetes.io/serviceaccount"
-	defaultConfig                 = "default"
+	defaultConfigName             = "default"
 	defaultEnabledMetric          = true
 	defaultMetricsPort            = 9090
 	defaultSidecarDebug           = false
@@ -219,7 +219,7 @@ func podContainsSidecarContainer(pod *corev1.Pod) bool {
 }
 
 func getConfig(annotations map[string]string) string {
-	return getStringAnnotationOrDefault(annotations, rusiConfigKey, defaultConfig)
+	return getStringAnnotationOrDefault(annotations, rusiConfigKey, defaultConfigName)
 }
 
 func getEnableDebug(annotations map[string]string) bool {

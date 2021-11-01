@@ -107,7 +107,7 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		klog.Errorf("Can't decode body: %v", err)
 	} else {
-		if !utils.StringSliceContains(ar.Request.UserInfo.UID, i.authUIDs) {
+		if i.config.ValidateServiceAccount && !utils.StringSliceContains(ar.Request.UserInfo.UID, i.authUIDs) {
 			err = errors.New(fmt.Sprintf("service account '%s' not on the list of allowed controller accounts", ar.Request.UserInfo.Username))
 			klog.Error(err)
 		} else if ar.Request.Kind.Kind != "Pod" {

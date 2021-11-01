@@ -14,6 +14,7 @@ func main() {
 	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
 	kube.InitFlags(nil)
+	injector.BindConfigFlags(nil)
 
 	flag.Parse()
 	defer klog.Flush()
@@ -25,12 +26,15 @@ func main() {
 	ctx := context.Background()
 
 	kubeClient := kube.GetKubeClient()
-	uids, err := injector.AllowedControllersServiceAccountUID(ctx, kubeClient)
-	if err != nil {
-		log.Fatalf("failed to get authentication uids from services accounts: %s", err)
-	}
+	var authUIDs []string
 
-	err = injector.NewInjector(uids, cfg, kubeClient).Run(ctx)
+	if cfg.ValidateServiceAccount {
+		authUIDs, err = injector.AllowedControllersServiceAccountUID(ctx, kubeClient)
+		if err != nil {
+			log.Fatalf("failed to get authentication uids from services accounts: %s", err)
+		}
+	}
+	err = injector.NewInjector(authUIDs, cfg, kubeClient).Run(ctx)
 	if err != http.ErrServerClosed {
 		klog.Fatal(err)
 	}

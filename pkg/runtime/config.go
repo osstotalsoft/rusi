@@ -11,7 +11,7 @@ import (
 const (
 	defaultGRPCPort        = 50003
 	defaultDiagnosticsPort = 8080
-	defaultEnableMetrics   = false
+	defaultEnableMetrics   = true
 )
 
 type ConfigBuilder struct {

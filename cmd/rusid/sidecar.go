@@ -66,7 +66,7 @@ func main() {
 	klog.InfoS("Rusid is using", "config", cfg)
 
 	//Start diagnostics server
-	go startDiagnosticsServer(mainCtx, wg, cfg.DiagnosticsPort, cfg.EnableMetrics,
+	go startDiagnosticsServer(mainCtx, wg, cfg.AppID, cfg.DiagnosticsPort, cfg.EnableMetrics,
 		// WithTimeout allows you to set a max overall timeout.
 		healthcheck.WithTimeout(5*time.Second),
 		healthcheck.WithChecker("component manager", compManager))
@@ -93,7 +93,7 @@ func shutdownOnInterrupt(cancel func()) {
 	}()
 }
 
-func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, port int,
+func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, appId string, port int,
 	enableMetrics bool, options ...healthcheck.Option) {
 	wg.Add(1)
 	defer wg.Done()
@@ -102,7 +102,8 @@ func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, port int,
 	router.Handle("/healthz", healthcheck.HandlerFunc(options...))
 
 	if enableMetrics {
-		router.Handle("/metrics", metrics.GetPrometheusMetricHandler())
+		exporter := metrics.SetupPrometheusMetrics(appId)
+		router.HandleFunc("/metrics", exporter.ServeHTTP)
 	} else {
 		metrics.SetNoopMeterProvider()
 	}

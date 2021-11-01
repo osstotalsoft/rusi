@@ -5,14 +5,13 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"os"
+
 	"sync"
 	"time"
 )
 
 type serviceMetrics struct {
 	pubsubMeter       metric.Meter
-	hostname          string
 	publishCount      metric.Int64Counter
 	subscribeDuration metric.Int64Histogram
 }
@@ -22,7 +21,7 @@ var (
 	s        *serviceMetrics
 )
 
-func DefaultMonitoring() *serviceMetrics {
+func DefaultPubSubMetrics() *serviceMetrics {
 	initOnce.Do(func() {
 		s = newServiceMetrics()
 	})
@@ -32,11 +31,9 @@ func DefaultMonitoring() *serviceMetrics {
 func newServiceMetrics() *serviceMetrics {
 	meter := global.Meter("rusi.io/pubsub")
 	pubsubM := metric.Must(meter)
-	hostname, _ := os.Hostname()
 
 	return &serviceMetrics{
 		pubsubMeter: meter,
-		hostname:    hostname,
 		publishCount: pubsubM.NewInt64Counter("pubsub.publish.count",
 			metric.WithDescription("The number of publishes")),
 		subscribeDuration: pubsubM.NewInt64Histogram("pubsub.subscribe.duration",
@@ -49,7 +46,6 @@ func (s *serviceMetrics) RecordPublishMessage(ctx context.Context, topic string,
 	s.pubsubMeter.RecordBatch(
 		ctx,
 		[]attribute.KeyValue{
-			attribute.String("hostname", s.hostname),
 			attribute.String("topic", topic),
 			attribute.Bool("success", success),
 		},
@@ -60,7 +56,6 @@ func (s *serviceMetrics) RecordSubscriberProcessingTime(ctx context.Context, top
 	s.pubsubMeter.RecordBatch(
 		ctx,
 		[]attribute.KeyValue{
-			attribute.String("hostname", s.hostname),
 			attribute.String("topic", topic),
 			attribute.Bool("success", success),
 		},
