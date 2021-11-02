@@ -176,13 +176,11 @@ func (rt *runtime) Run(ctx context.Context) error {
 }
 
 func (rt *runtime) IsHealthy(ctx context.Context) healthcheck.HealthResult {
-
 	if rt.appConfig.MinRuntimeVersion != "" && version.Version() < rt.appConfig.MinRuntimeVersion {
 		return healthcheck.HealthResult{
 			Status:      healthcheck.Unhealthy,
 			Description: "a bigger minimum runtime version is required",
 		}
 	}
-
 	return healthcheck.HealthyResult
 }
