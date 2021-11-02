@@ -138,8 +138,8 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 		},
 		PatchOperation{
 			Op:    "add",
-			Path:  "/metadata/labels",
-			Value: map[string]string{"app-runtime": "rusi"},
+			Path:  "/metadata/labels/app-runtime",
+			Value: "rusi",
 		},
 	)
 	patchOps = append(patchOps, envPatchOps...)
