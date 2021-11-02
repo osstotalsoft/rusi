@@ -6,7 +6,7 @@ OUT_DIR := ./dist
 BINARIES ?= rusid injector operator
 GIT_COMMIT  = $(shell git rev-list -1 HEAD)
 GIT_VERSION = $(shell git describe --always --abbrev=7 --dirty)
-RUSI_VERSION = edge
+RUSI_VERSION ?= edge
 
 # Helm template and install setting
 HELM:=helm
