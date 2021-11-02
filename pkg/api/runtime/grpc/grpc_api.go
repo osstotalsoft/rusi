@@ -19,32 +19,37 @@ import (
 )
 
 func NewGrpcAPI(port int, serverOptions ...grpc.ServerOption) runtime.Api {
-
-	srv := &rusiServerImpl{
-		refreshChannels:  []chan bool{},
-		publishHandler:   nil,
-		subscribeHandler: nil,
-	}
-	return &grpcApi{port, srv, serverOptions}
+	return &grpcApi{port: port, serverOptions: serverOptions}
 }
 
 type grpcApi struct {
-	port          int
-	server        *rusiServerImpl
-	serverOptions []grpc.ServerOption
+	port             int
+	server           *rusiServerImpl
+	serverOptions    []grpc.ServerOption
+	publishHandler   messaging.PublishRequestHandler
+	subscribeHandler messaging.SubscribeRequestHandler
 }
 
 func (srv *grpcApi) SetPublishHandler(publishHandler messaging.PublishRequestHandler) {
-	srv.server.publishHandler = publishHandler
+	srv.publishHandler = publishHandler
 }
 func (srv *grpcApi) SetSubscribeHandler(subscribeHandler messaging.SubscribeRequestHandler) {
-	srv.server.subscribeHandler = subscribeHandler
+	srv.subscribeHandler = subscribeHandler
 }
 func (srv *grpcApi) Refresh() error {
-	return srv.server.Refresh()
+	if srv.server != nil {
+		return srv.server.Refresh()
+	}
+	return nil
 }
 
 func (srv *grpcApi) Serve(ctx context.Context) error {
+	srv.server = &rusiServerImpl{
+		refreshChannels:  []chan bool{},
+		mainCtx:          ctx,
+		publishHandler:   srv.publishHandler,
+		subscribeHandler: srv.subscribeHandler,
+	}
 	grpcServer := grpc.NewServer(srv.serverOptions...)
 	v1.RegisterRusiServer(grpcServer, srv.server)
 
@@ -56,6 +61,7 @@ func (srv *grpcApi) Serve(ctx context.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
+			//grpcServer.GracefulStop() should also work
 			grpcServer.Stop()
 		}
 	}()
@@ -65,6 +71,7 @@ func (srv *grpcApi) Serve(ctx context.Context) error {
 
 type rusiServerImpl struct {
 	mu               sync.RWMutex
+	mainCtx          context.Context
 	refreshChannels  []chan bool
 	publishHandler   messaging.PublishRequestHandler
 	subscribeHandler messaging.SubscribeRequestHandler
@@ -135,17 +142,22 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 
 		//blocks until done or refresh
 		select {
+		case <-srv.mainCtx.Done():
+			exit = true
+			err = srv.mainCtx.Err()
 		case <-ctx.Done():
 			exit = true
-			klog.V(4).InfoS("closing subscription stream", "topic", request.Topic, "error", ctx.Err())
+			err = ctx.Err()
 		case <-refreshChan:
 			exit = false
 			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
 		}
 		hCancel()
+		//ignore unsubscribe error
 		_ = unsub()
 		if exit {
-			return ctx.Err()
+			klog.V(4).InfoS("closing subscription stream", "topic", request.Topic, "error", err)
+			return err
 		}
 	}
 }

@@ -29,6 +29,8 @@ type ConfigurationSpec struct {
 	Features []FeatureSpec `json:"features,omitempty"`
 	// +optional
 	PubSubSpec PubSubSpec `json:"pubSub,omitempty"`
+	// +optional
+	MinRuntimeVersion PubSubSpec `json:"minRuntimeVersion,omitempty"`
 }
 
 // PipelineSpec defines the middleware pipeline.
