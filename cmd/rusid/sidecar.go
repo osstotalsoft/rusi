@@ -71,7 +71,8 @@ func main() {
 	go startDiagnosticsServer(mainCtx, wg, cfg.AppID, cfg.DiagnosticsPort, cfg.EnableMetrics,
 		// WithTimeout allows you to set a max overall timeout.
 		healthcheck.WithTimeout(5*time.Second),
-		healthcheck.WithChecker("component manager", compManager))
+		healthcheck.WithChecker("component manager", compManager),
+		healthcheck.WithChecker("runtime", rt))
 
 	shutdownOnInterrupt(cancel)
 
