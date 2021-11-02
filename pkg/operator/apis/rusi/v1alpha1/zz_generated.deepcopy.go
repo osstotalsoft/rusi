@@ -202,7 +202,6 @@ func (in *ConfigurationSpec) DeepCopyInto(out *ConfigurationSpec) {
 		copy(*out, *in)
 	}
 	out.PubSubSpec = in.PubSubSpec
-	out.MinRuntimeVersion = in.MinRuntimeVersion
 	return
 }
 

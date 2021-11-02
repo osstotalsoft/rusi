@@ -30,7 +30,7 @@ type ConfigurationSpec struct {
 	// +optional
 	PubSubSpec PubSubSpec `json:"pubSub,omitempty"`
 	// +optional
-	MinRuntimeVersion PubSubSpec `json:"minRuntimeVersion,omitempty"`
+	MinRuntimeVersion string `json:"minRuntimeVersion,omitempty"`
 }
 
 // PipelineSpec defines the middleware pipeline.
