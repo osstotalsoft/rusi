@@ -3,7 +3,10 @@
 ################################################################################
 
 OUT_DIR := ./dist
-BINARIES ?= rusid injector
+BINARIES ?= rusid injector operator
+GIT_COMMIT  = $(shell git rev-list -1 HEAD)
+GIT_VERSION = $(shell git describe --always --abbrev=7 --dirty)
+RUSI_VERSION = edge
 
 # Helm template and install setting
 HELM:=helm
@@ -12,11 +15,20 @@ RUSI_NAMESPACE?=rusi-system
 HELM_CHART_ROOT:=./helm
 
 ################################################################################
+# Go build details                                                             #
+################################################################################
+BASE_PACKAGE_NAME := rusi
+
+DEFAULT_LDFLAGS:=-X $(BASE_PACKAGE_NAME)/internal/version.gitcommit=$(GIT_COMMIT) \
+  -X $(BASE_PACKAGE_NAME)/internal/version.gitversion=$(GIT_VERSION) \
+  -X $(BASE_PACKAGE_NAME)/internal/version.version=$(RUSI_VERSION)
+
+################################################################################
 # Target: build-linux                                                          #
 ################################################################################
 build-linux:
 	mkdir -p $(OUT_DIR)
-	CGO_ENABLED=0 GOOS=linux go build -o $(OUT_DIR) -ldflags "-s -w" ./cmd/rusid ./cmd/injector ./cmd/operator
+	CGO_ENABLED=0 GOOS=linux go build -o $(OUT_DIR) -ldflags "$(DEFAULT_LDFLAGS) -s -w" ./cmd/rusid ./cmd/injector ./cmd/operator
 
 modtidy:
 	go mod tidy

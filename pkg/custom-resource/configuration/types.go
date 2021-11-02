@@ -18,6 +18,7 @@ type Spec struct {
 	TracingSpec            TracingSpec   `json:"tracing,omitempty"  yaml:"tracing,omitempty"`
 	Features               []FeatureSpec `json:"features,omitempty" yaml:"features,omitempty"`
 	PubSubSpec             PubSubSpec    `json:"pubSub,omitempty" yaml:"pubSub,omitempty"`
+	MinRuntimeVersion      string        `json:"minRuntimeVersion,omitempty" yaml:"minRuntimeVersion,omitempty"`
 }
 
 // PipelineSpec defines the middleware pipeline.

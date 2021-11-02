@@ -70,8 +70,8 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		}, nil)
 	}
 
-	server := startServer(t, publishHandler, subscribeHandler)
 	ctx := context.Background()
+	server := startServer(t, ctx, publishHandler, subscribeHandler)
 
 	tests := []struct {
 		name             string
@@ -474,9 +474,10 @@ const bufSize = 1024 * 1024
 
 var lis *bufconn.Listener
 
-func startServer(t *testing.T, publishHandler messaging.PublishRequestHandler,
+func startServer(t *testing.T, ctx context.Context, publishHandler messaging.PublishRequestHandler,
 	subscribeHandler messaging.SubscribeRequestHandler) *rusiServerImpl {
 	server := &rusiServerImpl{
+		mainCtx:          ctx,
 		refreshChannels:  []chan bool{},
 		publishHandler:   publishHandler,
 		subscribeHandler: subscribeHandler,

@@ -99,6 +99,9 @@ spec:
                   required:
                     - name
                   type: object
+                minRuntimeVersion:
+                  description: Defines the minimum required rusid version
+                  type: string
               type: object
           type: object
       served: true

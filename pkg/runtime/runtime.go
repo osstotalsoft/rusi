@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"rusi/internal/version"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/custom-resource/configuration"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
+	"rusi/pkg/healthcheck"
 	"rusi/pkg/messaging"
 	"rusi/pkg/middleware"
 	"rusi/pkg/runtime/service"
@@ -171,4 +173,16 @@ func (rt *runtime) SubscribeHandler(ctx context.Context, request messaging.Subsc
 
 func (rt *runtime) Run(ctx context.Context) error {
 	return rt.api.Serve(ctx)
+}
+
+func (rt *runtime) IsHealthy(ctx context.Context) healthcheck.HealthResult {
+
+	if rt.appConfig.MinRuntimeVersion != "" && version.Version() < rt.appConfig.MinRuntimeVersion {
+		return healthcheck.HealthResult{
+			Status:      healthcheck.Unhealthy,
+			Description: "a bigger minimum runtime version is required",
+		}
+	}
+
+	return healthcheck.HealthyResult
 }

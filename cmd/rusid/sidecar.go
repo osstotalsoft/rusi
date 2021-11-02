@@ -10,6 +10,7 @@ import (
 	"rusi/internal/diagnostics"
 	"rusi/internal/metrics"
 	"rusi/internal/tracing"
+	"rusi/internal/version"
 	grpc_api "rusi/pkg/api/runtime/grpc"
 	components_loader "rusi/pkg/custom-resource/components/loader"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
@@ -62,7 +63,8 @@ func main() {
 	}
 
 	klog.InfoS("Rusid is starting", "port", cfg.RusiGRPCPort,
-		"app id", cfg.AppID, "mode", cfg.Mode)
+		"app id", cfg.AppID, "mode", cfg.Mode, "version", version.Version(),
+		"git commit", version.Commit(), "git version", version.GitVersion())
 	klog.InfoS("Rusid is using", "config", cfg)
 
 	//Start diagnostics server
