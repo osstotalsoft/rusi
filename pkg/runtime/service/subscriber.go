@@ -24,6 +24,8 @@ func (srv *subscriberService) StartSubscribing(request messaging.SubscribeReques
 	srv.pipeline.UseMiddleware(middleware.SubscriberTracingMiddleware())
 	pipe := srv.pipeline.Build(request.Handler)
 
+	klog.InfoS("subscribed to", "topic", request.Topic, "options", request.Options)
+
 	return srv.subscriber.Subscribe(request.Topic, func(ctx context.Context, env *messaging.MessageEnvelope) error {
 		klog.V(4).InfoS("message received on", "topic", request.Topic, "message", env)
 

@@ -262,16 +262,27 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 	if err != nil || subs == nil {
 		return nil, fmt.Errorf("nats-streaming: subscribe error %s", err)
 	}
-	if mergedOptions.subscriptionType == subscriptionTypeTopic {
-		klog.Infof("nats: subscribed to subject %s", topic)
-	} else if mergedOptions.subscriptionType == subscriptionTypeQueueGroup {
-		klog.Infof("nats: subscribed to topic %s with queue group %s", topic, mergedOptions.natsQueueGroupName)
-	}
+
+	logSubscribe(stanOptions, mergedOptions.subscriptionType, n.options.natsQueueGroupName, topic)
 
 	return func() error {
 		klog.Infof("nats: unsubscribed from topic %s", topic)
 		return subs.Close()
 	}, nil
+}
+
+func logSubscribe(stanOptions []stan.SubscriptionOption, subscriptionType, queueGroupName, topic string) {
+	opts := stan.SubscriptionOptions{}
+	for _, option := range stanOptions {
+		_ = option(&opts)
+	}
+
+	if subscriptionType == subscriptionTypeTopic {
+		klog.InfoS("nats: subscribed to", "subject", topic, "options", opts)
+	} else if subscriptionType == subscriptionTypeQueueGroup {
+		klog.InfoS("nats: subscribed to", "topic", topic,
+			"queue group", queueGroupName, "options", opts)
+	}
 }
 
 func stanSubscriptionOptions(opts options) ([]stan.SubscriptionOption, error) {
