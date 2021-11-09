@@ -12,7 +12,12 @@ func SubscriberMetricsMiddleware() messaging.Middleware {
 		return func(ctx context.Context, msg *messaging.MessageEnvelope) error {
 			start := time.Now()
 			err := next(ctx, msg)
-			metrics.DefaultPubSubMetrics().RecordSubscriberProcessingTime(ctx, msg.Subject, err == nil, time.Since(start))
+			topic := msg.Subject
+			if topic == "" {
+				topic = ctx.Value(messaging.TopicKey).(string)
+			}
+
+			metrics.DefaultPubSubMetrics().RecordSubscriberProcessingTime(ctx, topic, err == nil, time.Since(start))
 			return err
 		}
 	}

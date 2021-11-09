@@ -245,9 +245,9 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 			if err == nil {
 				// we only send a successful ACK if there is no error
 				natsMsg.Ack()
-				klog.V(4).InfoS("Message manually acknowledged in NATS")
+				klog.V(4).InfoS("Manual ack", "topic", natsMsg.Subject, "Id", msg.Id)
 			} else {
-				klog.ErrorS(err, "Error running subscriber pipeline, message was not ACK")
+				klog.ErrorS(err, "Error running subscriber pipeline, message was not ACK", "topic", natsMsg.Subject)
 			}
 		}()
 	}

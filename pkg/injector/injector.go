@@ -154,7 +154,6 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	klog.Infof("ready to write response ...")
 	respBytes, err := json.Marshal(admissionReview)
 	if err != nil {
 		http.Error(
@@ -163,13 +162,17 @@ func (i *injector) handleRequest(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 		)
 
-		klog.Errorf("Sidecar injector failed to inject for app '%s'. Can't deserialize response: %s", diagAppID, err)
+		klog.Errorf("Injector failed to inject for app '%s'. Can't deserialize response: %s", diagAppID, err)
 	}
 	w.Header().Set("Content-Type", runtime.ContentTypeJSON)
 	if _, err := w.Write(respBytes); err != nil {
 		klog.Error(err)
 	} else {
-		klog.Infof("Sidecar injector succeeded injection for app '%s'", diagAppID)
+		if len(patchOps) == 0 {
+			klog.Infof("Injector ignored app '%s'", diagAppID)
+		} else {
+			klog.Infof("Injector succeeded injection for app '%s'", diagAppID)
+		}
 	}
 }
 
