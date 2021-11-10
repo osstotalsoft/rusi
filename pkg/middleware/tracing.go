@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/strings"
 	"rusi/pkg/messaging"
 
 	"go.opentelemetry.io/otel"
@@ -62,7 +63,12 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 
 			span.AddEvent("new message received",
 				trace.WithAttributes(attribute.String("headers", fmt.Sprintf("%v", msg.Headers))))
-			span.SetAttributes(attribute.Key("message").String(fmt.Sprintf("%v", *msg)))
+
+			if msg.Payload != nil {
+				str := fmt.Sprintf("%v", msg.Payload)
+				span.SetAttributes(attribute.Key("messaging.message_payload").String(strings.ShortenString(str, 500)))
+			}
+			span.SetAttributes(attribute.Key("messaging.message_id").String(msg.Id))
 
 			Inject(ctx, msg.Headers)
 
