@@ -28,6 +28,7 @@ require (
 	k8s.io/apimachinery v0.22.3
 	k8s.io/client-go v0.22.3
 	k8s.io/klog/v2 v2.30.0
+	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
 )
 
 require (
@@ -68,7 +69,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/kube-openapi v0.0.0-20211109043139-026bd182f079 // indirect
-	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.0 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
