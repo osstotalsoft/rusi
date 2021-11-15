@@ -2,6 +2,8 @@ module rusi
 
 go 1.17
 
+//https://github.com/golang/go/wiki/Modules#how-to-upgrade-and-downgrade-dependencies
+
 require (
 	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12
@@ -11,14 +13,14 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/contrib/propagators/jaeger v1.1.1
-	go.opentelemetry.io/otel v1.1.0
-	go.opentelemetry.io/otel/exporters/jaeger v1.1.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.24.0
-	go.opentelemetry.io/otel/metric v0.24.0
-	go.opentelemetry.io/otel/sdk v1.1.0
-	go.opentelemetry.io/otel/sdk/export/metric v0.24.0
-	go.opentelemetry.io/otel/sdk/metric v0.24.0
-	go.opentelemetry.io/otel/trace v1.1.0
+	go.opentelemetry.io/otel v1.2.0
+	go.opentelemetry.io/otel/exporters/jaeger v1.2.0
+	go.opentelemetry.io/otel/exporters/prometheus v0.25.0
+	go.opentelemetry.io/otel/metric v0.25.0
+	go.opentelemetry.io/otel/sdk v1.2.0
+	go.opentelemetry.io/otel/sdk/export/metric v0.25.0
+	go.opentelemetry.io/otel/sdk/metric v0.25.0
+	go.opentelemetry.io/otel/trace v1.2.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.27.1
@@ -56,19 +58,19 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	go.opentelemetry.io/otel/internal/metric v0.24.0 // indirect
+	go.opentelemetry.io/otel/internal/metric v0.25.0 // indirect
 	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa // indirect
-	golang.org/x/net v0.0.0-20211109214657-ef0fda0de508 // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.0.0-20211110154304-99a53858aa08 // indirect
+	golang.org/x/sys v0.0.0-20211113001501-0c823b97ae02 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20211104193956-4c6863e31247 // indirect
+	google.golang.org/genproto v0.0.0-20211112145013-271947fe86fd // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/kube-openapi v0.0.0-20211109043139-026bd182f079 // indirect
+	k8s.io/kube-openapi v0.0.0-20211112165228-9cd6b5954396 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.0 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
