@@ -232,7 +232,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 		msg := messaging.MessageEnvelope{}
 		err := serdes.Unmarshal(natsMsg.Data, &msg)
 		if err != nil {
-			klog.ErrorS(err, "Error unmarshaling message")
+			klog.ErrorS(err, "Error unmarshaling message", "topic", natsMsg.Subject, "data", natsMsg.Data)
 		}
 		if msg.Id == "" {
 			msg.Id = strconv.FormatUint(natsMsg.Sequence, 10)
