@@ -1,19 +1,38 @@
 package serdes
 
-import jsoniter "github.com/json-iterator/go"
+import (
+	"fmt"
+	jsoniter "github.com/json-iterator/go"
+	"rusi/pkg/messaging"
+)
 
 func Marshal(data interface{}) ([]byte, error) {
 	return jsoniter.Marshal(data)
 }
 
-func MarshalToString(data interface{}) (string, error) {
-	return jsoniter.MarshalToString(data)
+func MarshalMessageEnvelope(data *messaging.MessageEnvelope) ([]byte, error) {
+	return jsoniter.Marshal(data)
 }
 
-func Unmarshal(data []byte, v interface{}) error {
-	return jsoniter.Unmarshal(data, v)
+func UnmarshalMessageEnvelope(data []byte) (messaging.MessageEnvelope, error) {
+	env := internalMessageEnvelope{}
+	env.MessageEnvelope.Headers = map[string]string{}
+
+	if err := jsoniter.Unmarshal(data, &env); err != nil {
+		return env.MessageEnvelope, err
+	}
+
+	for key, val := range env.Headers {
+		if val != nil {
+			env.MessageEnvelope.Headers[key] = fmt.Sprintf("%v", val)
+		} else {
+			env.MessageEnvelope.Headers[key] = ""
+		}
+	}
+	return env.MessageEnvelope, nil
 }
 
-func UnmarshalFromString(str string, v interface{}) error {
-	return jsoniter.UnmarshalFromString(str, v)
+type internalMessageEnvelope struct {
+	messaging.MessageEnvelope
+	Headers map[string]interface{} `json:"headers"`
 }

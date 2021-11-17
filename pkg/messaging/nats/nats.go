@@ -204,7 +204,7 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 
 func (n *natsStreamingPubSub) Publish(topic string, msg *messaging.MessageEnvelope) error {
 
-	msgBytes, err := serdes.Marshal(msg)
+	msgBytes, err := serdes.MarshalMessageEnvelope(msg)
 	if err != nil {
 		return err
 	}
@@ -229,8 +229,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 	}
 
 	natsMsgHandler := func(natsMsg *stan.Msg) {
-		msg := messaging.MessageEnvelope{}
-		err := serdes.Unmarshal(natsMsg.Data, &msg)
+		msg, err := serdes.UnmarshalMessageEnvelope(natsMsg.Data)
 		if err != nil {
 			klog.ErrorS(err, "Error unmarshaling message", "topic", natsMsg.Subject, "data", natsMsg.Data)
 		}
