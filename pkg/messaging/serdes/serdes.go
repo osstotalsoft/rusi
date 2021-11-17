@@ -10,15 +10,19 @@ func Marshal(data interface{}) ([]byte, error) {
 	return jsoniter.Marshal(data)
 }
 
+func Unmarshal(data []byte, v interface{}) error {
+	return jsoniter.Unmarshal(data, v)
+}
+
 func MarshalMessageEnvelope(data *messaging.MessageEnvelope) ([]byte, error) {
-	return jsoniter.Marshal(data)
+	return Marshal(data)
 }
 
 func UnmarshalMessageEnvelope(data []byte) (messaging.MessageEnvelope, error) {
 	env := internalMessageEnvelope{}
 	env.MessageEnvelope.Headers = map[string]string{}
 
-	if err := jsoniter.Unmarshal(data, &env); err != nil {
+	if err := Unmarshal(data, &env); err != nil {
 		return env.MessageEnvelope, err
 	}
 
