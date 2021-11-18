@@ -22,7 +22,7 @@ type MessageEnvelope struct {
 	//Data            interface{} `json:"data"`
 
 	//For backward compatibility
-	Headers map[string]string `json:"headers"`
+	Headers map[string]string `json:"Headers"` // hack for conductor
 	Payload interface{}       `json:"payload"`
 }
 
