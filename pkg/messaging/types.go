@@ -23,7 +23,7 @@ type MessageEnvelope struct {
 
 	//For backward compatibility
 	Headers map[string]string `json:"Headers"` // hack for conductor
-	Payload interface{}       `json:"payload"`
+	Payload interface{}       `json:"Payload"` // hack for conductor
 }
 
 type CloseFunc func() error
