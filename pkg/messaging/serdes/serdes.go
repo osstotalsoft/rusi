@@ -38,5 +38,5 @@ func UnmarshalMessageEnvelope(data []byte) (messaging.MessageEnvelope, error) {
 
 type internalMessageEnvelope struct {
 	messaging.MessageEnvelope
-	Headers map[string]interface{} `json:"headers"`
+	Headers map[string]interface{} `json:"Headers"`
 }
