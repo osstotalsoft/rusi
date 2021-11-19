@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"rusi/internal/diagnostics"
 	"rusi/internal/metrics"
 	"rusi/internal/tracing"
@@ -103,6 +104,10 @@ func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, appId strin
 
 	router := http.NewServeMux()
 	router.Handle("/healthz", healthcheck.HandlerFunc(options...))
+	router.HandleFunc("/gc", func(writer http.ResponseWriter, request *http.Request) {
+		debug.FreeOSMemory()
+		writer.WriteHeader(200)
+	})
 
 	if enableMetrics {
 		exporter := metrics.SetupPrometheusMetrics(appId)
