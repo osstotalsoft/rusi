@@ -3,12 +3,14 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"k8s.io/utils/strings"
 	"rusi/pkg/messaging"
+
+	"k8s.io/utils/strings"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/klog/v2"
@@ -36,7 +38,15 @@ func PublisherTracingMiddleware() messaging.Middleware {
 
 			Inject(ctx, msg.Headers)
 			klog.V(4).InfoS("publisher tracing middleware")
-			return next(ctx, msg)
+			err := next(ctx, msg)
+
+			if err == nil {
+				span.SetStatus(codes.Ok, "")
+			} else {
+				span.SetStatus(codes.Error, fmt.Sprintf("%v", err))
+			}
+
+			return err
 		}
 	}
 }
@@ -74,7 +84,15 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 
 			defer span.End()
 			klog.V(4).InfoS("subscriber tracing middleware")
-			return next(ctx, msg)
+			err := next(ctx, msg)
+
+			if err == nil {
+				span.SetStatus(codes.Ok, "")
+			} else {
+				span.SetStatus(codes.Error, fmt.Sprintf("%v", err))
+			}
+
+			return err
 		}
 	}
 }
