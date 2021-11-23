@@ -88,8 +88,16 @@ spec:
                         endpointAddress:
                           description: The endpoint address of Zipkin server to receive traces
                           type: string
+                    jaeger:
+                      type: object
+                      description: Defines the Jaeger trace configurations
+                      properties:
+                        useAgent:
+                          description: The endpoint address of Jaeger server to receive traces
+                          type: boolean
                   required:
                     - zipkin
+                    - jaeger
                   type: object
                 pubSub:
                   description: Defines the default pubSub

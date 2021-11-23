@@ -9,6 +9,8 @@ spec:
     samplingRate: '1'
     zipkin:
       endpointAddress: 'http://kube-worker1.totalsoft.local:31034/api/traces'
+    jaeger:
+      useAgent: true
   subscriberPipeline:
     handlers:
     - name: pubsub-uppercase

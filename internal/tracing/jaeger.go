@@ -13,9 +13,16 @@ import (
 // the Jaeger exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
-func JaegerTracerProvider(url, environment, serviceName string) (*tracesdk.TracerProvider, error) {
+func JaegerTracerProvider(url string, useAgent bool, environment, serviceName string) (*tracesdk.TracerProvider, error) {
 	// Create the Jaeger exporter
-	exp, err := jaeger_exporters.New(jaeger_exporters.WithCollectorEndpoint(jaeger_exporters.WithEndpoint(url)))
+	var exp *jaeger_exporters.Exporter
+	var err error
+
+	if useAgent {
+		exp, err = jaeger_exporters.New(jaeger_exporters.WithAgentEndpoint())
+	} else {
+		exp, err = jaeger_exporters.New(jaeger_exporters.WithCollectorEndpoint(jaeger_exporters.WithEndpoint(url)))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -33,9 +40,9 @@ func JaegerTracerProvider(url, environment, serviceName string) (*tracesdk.Trace
 	return tp, nil
 }
 
-func SetJaegerTracing(environment, serviceName string) func(url string) (func(), error) {
-	return func(url string) (func(), error) {
-		tp, err := JaegerTracerProvider(url, environment, serviceName)
+func SetJaegerTracing(environment, serviceName string) func(url string, useAgent bool) (func(), error) {
+	return func(url string, useAgent bool) (func(), error) {
+		tp, err := JaegerTracerProvider(url, useAgent, environment, serviceName)
 		if err != nil {
 			return nil, err
 		}

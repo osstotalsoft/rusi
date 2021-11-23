@@ -36,11 +36,17 @@ type HandlerSpec struct {
 // TracingSpec defines distributed tracing configuration.
 type TracingSpec struct {
 	Zipkin ZipkinSpec `json:"zipkin" yaml:"zipkin"`
+	Jaeger JaegerSpec `json:"jaeger" yaml:"jaeger"`
 }
 
 // ZipkinSpec defines Zipkin trace configurations.
 type ZipkinSpec struct {
 	EndpointAddresss string `json:"endpointAddress" yaml:"endpointAddress"`
+}
+
+// ZipkinSpec defines Zipkin trace configurations.
+type JaegerSpec struct {
+	UseAgent bool `json:"useAgent" yaml:"useAgent"`
 }
 
 // FeatureSpec defines the features that are enabled/disabled.
