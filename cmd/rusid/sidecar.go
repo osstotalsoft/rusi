@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"k8s.io/klog/v2"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,6 +20,8 @@ import (
 	"rusi/pkg/runtime"
 	"sync"
 	"time"
+
+	"k8s.io/klog/v2"
 )
 
 func main() {
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	//setup tracing
-	go diagnostics.WatchConfig(mainCtx, configLoader, tracing.SetJaegerTracing("dev", cfg.AppID))
+	go diagnostics.WatchConfig(mainCtx, configLoader, tracing.SetJaegerTracing(cfg.AppID))
 
 	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,
 		RegisterComponentFactories()...)

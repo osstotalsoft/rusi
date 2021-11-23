@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"rusi/pkg/messaging"
 
-	"k8s.io/utils/strings"
-
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
@@ -14,6 +12,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/strings"
 )
 
 func PublisherTracingMiddleware() messaging.Middleware {
@@ -31,6 +30,7 @@ func PublisherTracingMiddleware() messaging.Middleware {
 				fmt.Sprintf("%s send", topic),
 				trace.WithSpanKind(trace.SpanKindProducer),
 				trace.WithAttributes(
+					attribute.String("component", "Rusi"),
 					semconv.MessagingDestinationKey.String(topic),
 					semconv.MessagingDestinationKindTopic))
 
@@ -44,6 +44,7 @@ func PublisherTracingMiddleware() messaging.Middleware {
 				span.SetStatus(codes.Ok, "")
 			} else {
 				span.SetStatus(codes.Error, fmt.Sprintf("%v", err))
+				span.RecordError(err, trace.WithStackTrace(true))
 			}
 
 			return err
@@ -67,6 +68,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 				fmt.Sprintf("%s receive", topic),
 				trace.WithSpanKind(trace.SpanKindConsumer),
 				trace.WithAttributes(
+					attribute.String("component", "Rusi"),
 					semconv.MessagingDestinationKey.String(topic),
 					semconv.MessagingDestinationKindTopic,
 					semconv.MessagingOperationReceive))
@@ -90,6 +92,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 				span.SetStatus(codes.Ok, "")
 			} else {
 				span.SetStatus(codes.Error, fmt.Sprintf("%v", err))
+				span.RecordError(err, trace.WithStackTrace(true))
 			}
 
 			return err
