@@ -46,18 +46,13 @@ type HandlerSpec struct {
 
 // TracingSpec defines distributed tracing configuration.
 type TracingSpec struct {
-	Zipkin ZipkinSpec `json:"zipkin"`
 	Jaeger JaegerSpec `json:"jaeger"`
-}
-
-// ZipkinSpec defines Zipkin trace configurations.
-type ZipkinSpec struct {
-	EndpointAddresss string `json:"endpointAddress"`
 }
 
 // JaegerSpec defines Jaeger trace configurations.
 type JaegerSpec struct {
-	UseAgent bool `json:"useAgent"`
+	UseAgent                 bool   `json:"useAgent"`
+	CollectorEndpointAddress string `json:"collectorEndpointAddress"`
 }
 
 // FeatureSpec defines the features that are enabled/disabled.

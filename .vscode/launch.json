@@ -11,6 +11,14 @@
             "mode": "auto",
             "program": "./cmd/rusid",
             "args": ["--app-id", "rusi-vs-code-debug", "--config", "../../examples/components/config-node-pipeline.yaml", "--components-path", "../../examples/components", "--v", "4"]
+        },
+        {
+            "name": "Test Current File",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${relativeFileDirname}",
+            "args": []
         }
 
     ]
