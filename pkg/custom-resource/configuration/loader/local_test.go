@@ -32,8 +32,9 @@ metadata:
   name: secretappconfig
 spec:
   tracing:
-    zipkin:
-      endpointAddress: "${RUSI_ZIPKIN_ENDPOINT}" `)
+    jaeger:
+      collectorEndpointAddress: "${RUSI_JAEGER_COLLECTOR_ENDPOINT}" 
+      useAgent: false `)
 
 	defer os.Remove("config.yaml")
 	defer os.Remove("env_variables_config.yaml")
@@ -69,12 +70,12 @@ spec:
 	}
 
 	t.Run("Parse environment variables", func(t *testing.T) {
-		os.Setenv("RUSI_ZIPKIN_ENDPOINT", "http://localhost:42323")
+		os.Setenv("RUSI_JAEGER_COLLECTOR_ENDPOINT", "http://localhost:42323")
 		configChan, err := LoadStandaloneConfiguration("env_variables_config.yaml")(ctx)
 		config := <-configChan
 		assert.NoError(t, err, "Unexpected error")
 		assert.NotNil(t, config, "Config not loaded as expected")
-		assert.Equal(t, "http://localhost:42323", config.TracingSpec.Zipkin.EndpointAddresss)
+		assert.Equal(t, "http://localhost:42323", config.TracingSpec.Jaeger.CollectorEndpointAddress)
 	})
 
 	t.Run("Load config file", func(t *testing.T) {

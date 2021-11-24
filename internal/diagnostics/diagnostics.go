@@ -2,13 +2,14 @@ package diagnostics
 
 import (
 	"context"
-	"k8s.io/klog/v2"
 	"rusi/pkg/custom-resource/configuration"
 	configuration_loader "rusi/pkg/custom-resource/configuration/loader"
+
+	"k8s.io/klog/v2"
 )
 
 func WatchConfig(ctx context.Context, configLoader configuration_loader.ConfigurationLoader,
-	tracerFunc func(url string) (func(), error)) {
+	tracerFunc func(url string, useAgent bool) (func(), error)) {
 
 	var (
 		prevConf       configuration.Spec
@@ -21,13 +22,15 @@ func WatchConfig(ctx context.Context, configLoader configuration_loader.Configur
 	}
 
 	for cfg := range configChan {
-		if prevConf.TracingSpec.Zipkin.EndpointAddresss != cfg.TracingSpec.Zipkin.EndpointAddresss {
+		changed := cfg.TracingSpec != prevConf.TracingSpec
+		validConfig := cfg.TracingSpec.Jaeger.UseAgent || cfg.TracingSpec.Jaeger.CollectorEndpointAddress != ""
+		if changed {
 			if tracingStopper != nil {
 				//flush prev logs
 				tracingStopper()
 			}
-			if cfg.TracingSpec.Zipkin.EndpointAddresss != "" {
-				tracingStopper, err = tracerFunc(cfg.TracingSpec.Zipkin.EndpointAddresss)
+			if validConfig {
+				tracingStopper, err = tracerFunc(cfg.TracingSpec.Jaeger.CollectorEndpointAddress, cfg.TracingSpec.Jaeger.UseAgent)
 				if err != nil {
 					klog.ErrorS(err, "error creating tracer")
 				}

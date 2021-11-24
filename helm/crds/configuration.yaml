@@ -81,15 +81,18 @@ spec:
                 tracing:
                   description: TracingSpec is the spec object in ConfigurationSpec
                   properties:
-                    zipkin:
+                    jaeger:
                       type: object
-                      description: Defines the Zipkin trace configurations
+                      description: Defines the Jaeger trace configurations
                       properties:
-                        endpointAddress:
-                          description: The endpoint address of Zipkin server to receive traces
+                        useAgent:
+                          description: Determines if a Jaeger agent is used
+                          type: boolean
+                        collectorEndpointAddress:
+                          description: The endpoint address of Jaeger collector to receive traces. Ignored if 'useAgent' is set.
                           type: string
                   required:
-                    - zipkin
+                    - jaeger
                   type: object
                 pubSub:
                   description: Defines the default pubSub
