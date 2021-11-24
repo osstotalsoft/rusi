@@ -8,7 +8,7 @@ spec:
   tracing:
     samplingRate: '1'
     jaeger:
-      useAgent: true
+      useAgent: false
       collectorEndpointAddress: 'http://kube-worker1.totalsoft.local:31034/api/traces'
   subscriberPipeline:
     handlers:
