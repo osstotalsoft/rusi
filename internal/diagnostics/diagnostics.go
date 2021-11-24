@@ -22,14 +22,14 @@ func WatchConfig(ctx context.Context, configLoader configuration_loader.Configur
 	}
 
 	for cfg := range configChan {
-		enabledAgent := !prevConf.TracingSpec.Jaeger.UseAgent && cfg.TracingSpec.Jaeger.UseAgent
-		changedCollectorUrl := !cfg.TracingSpec.Jaeger.UseAgent && prevConf.TracingSpec.Jaeger.CollectorEndpointAddress != cfg.TracingSpec.Jaeger.CollectorEndpointAddress
-		if enabledAgent || changedCollectorUrl {
+		changed := cfg.TracingSpec != prevConf.TracingSpec
+		validConfig := cfg.TracingSpec.Jaeger.UseAgent || cfg.TracingSpec.Jaeger.CollectorEndpointAddress != ""
+		if changed {
 			if tracingStopper != nil {
 				//flush prev logs
 				tracingStopper()
 			}
-			if enabledAgent || (changedCollectorUrl && cfg.TracingSpec.Jaeger.CollectorEndpointAddress != "") {
+			if validConfig {
 				tracingStopper, err = tracerFunc(cfg.TracingSpec.Jaeger.CollectorEndpointAddress, cfg.TracingSpec.Jaeger.UseAgent)
 				if err != nil {
 					klog.ErrorS(err, "error creating tracer")
