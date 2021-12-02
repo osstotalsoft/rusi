@@ -130,46 +130,6 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 		return errors.New("invalid subscription request")
 	}
 
-	ctx, cancel := context.WithCancel(stream.Context())
-	defer cancel()
-	exit := false
-	refreshChan := srv.createRefreshChan()
-	defer srv.removeRefreshChan(refreshChan)
-	handler := srv.buildSubscribeHandler(stream)
-	for {
-		hCtx, hCancel := context.WithCancel(ctx)
-		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
-			PubsubName: request.GetPubsubName(),
-			Topic:      request.GetTopic(),
-			Handler:    handler(hCtx),
-			Options:    messagingSubscriptionOptions(request.GetOptions()),
-		})
-
-		if err != nil {
-			hCancel()
-			return err
-		}
-
-		//blocks until done or refresh
-		select {
-		case <-srv.mainCtx.Done():
-			exit = true
-			err = srv.mainCtx.Err()
-		case <-ctx.Done():
-			exit = true
-			err = ctx.Err()
-		case <-refreshChan:
-			exit = false
-			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
-		}
-		hCancel()
-		//ignore unsubscribe error
-		_ = unsub()
-		if exit {
-			klog.V(4).InfoS("closing subscription stream", "topic", request.Topic, "error", err)
-			return err
-		}
-	}
 }
 
 type subAck struct {
@@ -259,7 +219,45 @@ func startStreamListener(subAckMap map[string]*subAck, mu *sync.RWMutex, stream 
 }
 
 func handleIncomingSubscription(subscriptionRequest *v1.SubscriptionRequest, subAckMap map[string]*subAck, mu *sync.RWMutex) error {
-	wg.a
+
+	exit := false
+	refreshChan := srv.createRefreshChan()
+	defer srv.removeRefreshChan(refreshChan)
+	handler := srv.buildSubscribeHandler(stream)
+	for {
+		hCtx, hCancel := context.WithCancel(ctx)
+		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
+			PubsubName: request.GetPubsubName(),
+			Topic:      request.GetTopic(),
+			Handler:    handler(hCtx),
+			Options:    messagingSubscriptionOptions(request.GetOptions()),
+		})
+
+		if err != nil {
+			hCancel()
+			return err
+		}
+
+		//blocks until done or refresh
+		select {
+		case <-srv.mainCtx.Done():
+			exit = true
+			err = srv.mainCtx.Err()
+		case <-ctx.Done():
+			exit = true
+			err = ctx.Err()
+		case <-refreshChan:
+			exit = false
+			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
+		}
+		hCancel()
+		//ignore unsubscribe error
+		_ = unsub()
+		if exit {
+			klog.V(4).InfoS("closing subscription stream", "topic", request.Topic, "error", err)
+			return err
+		}
+	}
 }
 
 func handleAck(ackRequest *v1.AckRequest, subAckMap map[string]*subAck, mu *sync.RWMutex) error {
