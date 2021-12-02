@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"net"
 	"rusi/pkg/api/runtime"
 	"rusi/pkg/messaging"
@@ -109,9 +110,18 @@ func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
 }
 
 // Subscribe creates a subscription
-func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) error {
+func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
+
+	mu := &sync.RWMutex{}
+	subAckMap := map[string]*subAck{}
+	eg := errgroup.Group{}
+
+	eg.Go(func() error {
+		return startStreamListener(stream, subAckMap, mu)
+	})
+
 	//block until subscriptionRequest is received
-	r, err := subscribeServer.Recv()
+	r, err := stream.Recv()
 	if err != nil {
 		return err
 	}
@@ -120,12 +130,12 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 		return errors.New("invalid subscription request")
 	}
 
-	ctx, cancel := context.WithCancel(subscribeServer.Context())
+	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
 	exit := false
 	refreshChan := srv.createRefreshChan()
 	defer srv.removeRefreshChan(refreshChan)
-	handler := srv.buildSubscribeHandler(subscribeServer)
+	handler := srv.buildSubscribeHandler(stream)
 	for {
 		hCtx, hCancel := context.WithCancel(ctx)
 		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
@@ -168,12 +178,6 @@ type subAck struct {
 }
 
 func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer) func(context.Context) messaging.Handler {
-
-	subAckMap := map[string]*subAck{}
-	mu := &sync.RWMutex{}
-
-	//monitor incoming ack stream for the current subscription
-	go startAckReceiverForStream(subAckMap, mu, stream)
 
 	return func(buildCtx context.Context) messaging.Handler {
 		return func(ctx context.Context, env *messaging.MessageEnvelope) error {
@@ -224,45 +228,60 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 	}
 }
 
-func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, stream v1.Rusi_SubscribeServer) {
+func startStreamListener(subAckMap map[string]*subAck, mu *sync.RWMutex, stream v1.Rusi_SubscribeServer) error {
 
-	//wait for ack from the client
+	//wait for ack or subscriptionRequest from the client app
 	for {
 		select {
 		case <-stream.Context().Done():
-			klog.V(4).ErrorS(stream.Context().Err(), "stopping ack stream watcher")
-			return
+			klog.V(4).ErrorS(stream.Context().Err(), "stopping stream listener")
+			return stream.Context().Err()
 		default:
 			r, err := stream.Recv() //blocks
 			if err != nil {
-				klog.V(4).ErrorS(err, "ack stream error")
-				break
+				klog.V(4).ErrorS(err, "stream reading error or stream is closed")
+				return err
 			}
-			if r.GetAckRequest() == nil {
-				klog.V(4).InfoS("invalid ack response")
-				break
+			if r.GetRequestType() == nil {
+				klog.V(4).InfoS("invalid message received")
 			}
-			if r.GetAckRequest().GetError() != "" {
-				err = errors.New(r.GetAckRequest().GetError())
+			if r.GetAckRequest() != nil {
+				err = handleAck(r.GetAckRequest(), subAckMap, mu)
 			}
-
-			mu.RLock()
-			mid := r.GetAckRequest().GetMessageId()
-			klog.V(4).InfoS("Ack received for message", "Id", mid)
-			for id, ack := range subAckMap {
-				if id == mid {
-					if ack.ackHandler != nil {
-						ack.ackHandler(mid, err)
-					}
-					if ack.errCh != nil {
-						ack.errCh <- err
-					}
-					break
-				}
+			if r.GetSubscriptionRequest() != nil {
+				err = handleIncomingSubscription(r.GetSubscriptionRequest(), subAckMap, mu)
 			}
-			mu.RUnlock()
+			if err != nil {
+				return err
+			}
 		}
 	}
+}
+
+func handleIncomingSubscription(subscriptionRequest *v1.SubscriptionRequest, subAckMap map[string]*subAck, mu *sync.RWMutex) error {
+	wg.a
+}
+
+func handleAck(ackRequest *v1.AckRequest, subAckMap map[string]*subAck, mu *sync.RWMutex) error {
+	if ackRequest.GetError() != "" {
+		err = errors.New(ackRequest.GetError())
+	}
+
+	mu.RLock()
+	mid := ackRequest.GetMessageId()
+	klog.V(4).InfoS("Ack received for message", "Id", mid)
+	for id, ack := range subAckMap {
+		if id == mid {
+			if ack.ackHandler != nil {
+				ack.ackHandler(mid, err)
+			}
+			if ack.errCh != nil {
+				ack.errCh <- err
+			}
+			break
+		}
+	}
+	mu.RUnlock()
 }
 
 func (srv *rusiServerImpl) Publish(ctx context.Context, request *v1.PublishRequest) (*emptypb.Empty, error) {
