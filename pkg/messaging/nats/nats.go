@@ -227,6 +227,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 	if err != nil {
 		return nil, fmt.Errorf("nats-streaming: error getting stan subscription options %s", err)
 	}
+	parsedOptions := parseSubscribeOptions(stanOptions)
 
 	natsMsgHandler := func(natsMsg *stan.Msg) {
 		msg, err := serdes.UnmarshalMessageEnvelope(natsMsg.Data)
@@ -240,7 +241,9 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 
 		//run handler concurrently
 		go func() {
-			err = handler(n.ctx, &msg)
+			newCtx, cancel := context.WithTimeout(n.ctx, parsedOptions.AckWait)
+			defer cancel()
+			err = handler(newCtx, &msg)
 			if err == nil {
 				// we only send a successful ACK if there is no error
 				natsMsg.Ack()
@@ -262,7 +265,7 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 		return nil, fmt.Errorf("nats-streaming: subscribe error %s", err)
 	}
 
-	logSubscribe(stanOptions, mergedOptions.subscriptionType, n.options.natsQueueGroupName, topic)
+	logSubscribe(parsedOptions, mergedOptions.subscriptionType, n.options.natsQueueGroupName, topic)
 
 	return func() error {
 		klog.Infof("nats: unsubscribed from topic %s", topic)
@@ -270,17 +273,19 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 	}, nil
 }
 
-func logSubscribe(stanOptions []stan.SubscriptionOption, subscriptionType, queueGroupName, topic string) {
-	opts := stan.SubscriptionOptions{}
+func parseSubscribeOptions(stanOptions []stan.SubscriptionOption) stan.SubscriptionOptions {
+	opts := stan.DefaultSubscriptionOptions
 	for _, option := range stanOptions {
 		_ = option(&opts)
 	}
-
+	return opts
+}
+func logSubscribe(stanOptions stan.SubscriptionOptions, subscriptionType, queueGroupName, topic string) {
 	if subscriptionType == subscriptionTypeTopic {
-		klog.InfoS("nats: subscribed to", "subject", topic, "options", opts)
+		klog.InfoS("nats: subscribed to", "subject", topic, "options", stanOptions)
 	} else if subscriptionType == subscriptionTypeQueueGroup {
 		klog.InfoS("nats: subscribed to", "topic", topic,
-			"queue group", queueGroupName, "options", opts)
+			"queue group", queueGroupName, "options", stanOptions)
 	}
 }
 
