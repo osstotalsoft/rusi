@@ -109,9 +109,9 @@ func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
 }
 
 // Subscribe creates a subscription
-func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) error {
+func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 	//block until subscriptionRequest is received
-	r, err := subscribeServer.Recv()
+	r, err := stream.Recv()
 	if err != nil {
 		return err
 	}
@@ -120,15 +120,13 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 		return errors.New("invalid subscription request")
 	}
 
-	ctx, cancel := context.WithCancel(subscribeServer.Context())
-	defer cancel()
 	exit := false
 	refreshChan := srv.createRefreshChan()
 	defer srv.removeRefreshChan(refreshChan)
-	handler := srv.buildSubscribeHandler(subscribeServer)
+	handler := srv.buildSubscribeHandler(stream)
 	for {
-		hCtx, hCancel := context.WithCancel(ctx)
-		unsub, err := srv.subscribeHandler(ctx, messaging.SubscribeRequest{
+		hCtx, hCancel := context.WithCancel(context.Background())
+		unsub, err := srv.subscribeHandler(hCtx, messaging.SubscribeRequest{
 			PubsubName: request.GetPubsubName(),
 			Topic:      request.GetTopic(),
 			Handler:    handler(hCtx),
@@ -145,9 +143,9 @@ func (srv *rusiServerImpl) Subscribe(subscribeServer v1.Rusi_SubscribeServer) er
 		case <-srv.mainCtx.Done():
 			exit = true
 			err = srv.mainCtx.Err()
-		case <-ctx.Done():
+		case <-stream.Context().Done():
 			exit = true
-			err = ctx.Err()
+			err = stream.Context().Err()
 		case <-refreshChan:
 			exit = false
 			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
