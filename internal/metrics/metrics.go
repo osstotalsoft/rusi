@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
@@ -34,9 +35,9 @@ func newServiceMetrics() *serviceMetrics {
 
 	return &serviceMetrics{
 		pubsubMeter: meter,
-		publishCount: pubsubM.NewInt64Counter("pubsub.publish.count",
+		publishCount: pubsubM.NewInt64Counter("rusi.pubsub.publish.count",
 			metric.WithDescription("The number of publishes")),
-		subscribeDuration: pubsubM.NewInt64Histogram("pubsub.subscribe.duration",
+		subscribeDuration: pubsubM.NewInt64Histogram("rusi.pubsub.processing.duration",
 			metric.WithDescription("The duration of a message execution"),
 			metric.WithUnit("milliseconds")),
 	}
