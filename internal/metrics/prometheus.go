@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"context"
+	"time"
+
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/export/metric/aggregation"
@@ -12,11 +14,10 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"k8s.io/klog/v2"
-	"time"
 )
 
 func SetupPrometheusMetrics(appId string) *prometheus.Exporter {
-	config := prometheus.Config{}
+	config := prometheus.Config{DefaultHistogramBoundaries: []float64{10, 100, 1000, 10000, 100000}}
 	r, _ := resource.New(context.Background(),
 		resource.WithHost(),
 		resource.WithAttributes(semconv.ServiceNameKey.String(appId)))
