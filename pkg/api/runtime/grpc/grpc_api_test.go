@@ -131,8 +131,8 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			client.Publish(ctx, tt.publishRequest)
 			msg2, err := stream.Recv() //blocks
 
-			stream.Send(createAckRequest(msg1.Id, ""))
-			stream.Send(createAckRequest(msg2.Id, ""))
+			stream.Send(createAckRequest(msg1.Id, tt.subscribeRequest.PubsubName, tt.subscribeRequest.Topic, ""))
+			stream.Send(createAckRequest(msg2.Id, tt.subscribeRequest.PubsubName, tt.subscribeRequest.Topic, ""))
 			err = waitInLoop(func() bool {
 				return store.IsDoneWorking()
 			})
@@ -184,8 +184,8 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		msg2, err = stream.Recv() //blocks
 		assert.NotNil(t, msg2)
 		assert.NoError(t, err)
-		stream.Send(createAckRequest(msg1.Id, ""))
-		err = stream.Send(createAckRequest(msg2.Id, ""))
+		stream.Send(createAckRequest(msg1.Id, "p1", topic, ""))
+		err = stream.Send(createAckRequest(msg2.Id, "p1", topic, ""))
 		assert.NoError(t, err)
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
@@ -241,7 +241,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		msg, err := stream.Recv() //blocks
 		assert.NotNil(t, msg)
 		assert.NoError(t, err)
-		err = stream.Send(createAckRequest(msg.Id, ""))
+		err = stream.Send(createAckRequest(msg.Id, "p1", topic, ""))
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
@@ -327,7 +327,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			return store.GetSubscribersCount(topic) == 1
 		})
 		assert.NoError(t, err, "subscribers count does not match")
-		err = stream.Send(createAckRequest("fdssdfsdf", ""))
+		err = stream.Send(createAckRequest("fdssdfsdf", "p1", topic, ""))
 		assert.NoError(t, err)
 		time.Sleep(100 * time.Millisecond)
 		closer()
@@ -369,8 +369,8 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			return nil
 		}, "timeout waiting for receiving message on stream")
 		assert.NoError(t, err)
-		err = stream.Send(createAckRequest(msg1.Id, ""))
-		err = stream.Send(createAckRequest(msg2.Id, ""))
+		err = stream.Send(createAckRequest(msg1.Id, "p1", topic, ""))
+		err = stream.Send(createAckRequest(msg2.Id, "p1", topic, ""))
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
@@ -411,7 +411,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 			return nil
 		}, "timeout waiting for receiving message on stream")
 		assert.NoError(t, err)
-		err = stream.Send(createAckRequest(msg.Id, "error from processing"))
+		err = stream.Send(createAckRequest(msg.Id, "p1", topic, "error from processing"))
 		err = waitInLoop(func() bool {
 			return store.IsDoneWorking()
 		})
@@ -536,7 +536,7 @@ func createSubscribeRequest(subscriptionRequest *v1.SubscriptionRequest) *v1.Sub
 	return &v1.SubscribeRequest{RequestType: &v1.SubscribeRequest_SubscriptionRequest{
 		SubscriptionRequest: subscriptionRequest}}
 }
-func createAckRequest(id, error string) *v1.SubscribeRequest {
+func createAckRequest(id, pubsubName, topic, error string) *v1.SubscribeRequest {
 	return &v1.SubscribeRequest{RequestType: &v1.SubscribeRequest_AckRequest{
-		AckRequest: &v1.AckRequest{MessageId: id, Error: error}}}
+		AckRequest: &v1.AckRequest{MessageId: id, PubsubName: pubsubName, Topic: topic, Error: error}}}
 }

@@ -53,6 +53,8 @@ message SubscribeRequest {
 message AckRequest {
   string message_id = 1;
   string error = 2;
+  string topic = 3;
+  string pubsub_name = 4;
 }
 
 message SubscriptionRequest {
@@ -79,4 +81,6 @@ message ReceivedMessage {
   // The data which will be published to topic.
   bytes data = 2;
   map<string, string> metadata = 3;
+  string topic = 4;
+  string pubsub_name = 5;
 }
