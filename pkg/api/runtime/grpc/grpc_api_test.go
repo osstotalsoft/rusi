@@ -476,12 +476,7 @@ var lis *bufconn.Listener
 
 func startServer(t *testing.T, ctx context.Context, publishHandler messaging.PublishRequestHandler,
 	subscribeHandler messaging.SubscribeRequestHandler) *rusiServerImpl {
-	server := &rusiServerImpl{
-		mainCtx:          ctx,
-		refreshChannels:  []chan bool{},
-		publishHandler:   publishHandler,
-		subscribeHandler: subscribeHandler,
-	}
+	server := newRusiServer(ctx, publishHandler, subscribeHandler)
 	lis = bufconn.Listen(bufSize)
 	grpcServer := grpc.NewServer()
 	v1.RegisterRusiServer(grpcServer, server)
