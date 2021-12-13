@@ -44,12 +44,7 @@ func (srv *grpcApi) Refresh() error {
 }
 
 func (srv *grpcApi) Serve(ctx context.Context) error {
-	srv.server = &rusiServerImpl{
-		refreshChannels:  []chan bool{},
-		mainCtx:          ctx,
-		publishHandler:   srv.publishHandler,
-		subscribeHandler: srv.subscribeHandler,
-	}
+	srv.server = newRusiServer(ctx, srv.publishHandler, srv.subscribeHandler)
 	grpcServer := grpc.NewServer(srv.serverOptions...)
 	v1.RegisterRusiServer(grpcServer, srv.server)
 
@@ -66,15 +61,31 @@ func (srv *grpcApi) Serve(ctx context.Context) error {
 		}
 	}()
 
-	return grpcServer.Serve(lis)
+	err = grpcServer.Serve(lis)
+	//wait for unsubscribe
+	srv.server.subsWaitGroup.Wait()
+	return err
 }
 
 type rusiServerImpl struct {
 	mu               sync.RWMutex
 	mainCtx          context.Context
+	subsWaitGroup    *sync.WaitGroup
 	refreshChannels  []chan bool
 	publishHandler   messaging.PublishRequestHandler
 	subscribeHandler messaging.SubscribeRequestHandler
+}
+
+func newRusiServer(ctx context.Context,
+	publishHandler messaging.PublishRequestHandler,
+	subscribeHandler messaging.SubscribeRequestHandler) *rusiServerImpl {
+	return &rusiServerImpl{
+		refreshChannels:  []chan bool{},
+		mainCtx:          ctx,
+		subsWaitGroup:    &sync.WaitGroup{},
+		publishHandler:   publishHandler,
+		subscribeHandler: subscribeHandler,
+	}
 }
 
 func (srv *rusiServerImpl) Refresh() error {
@@ -110,6 +121,9 @@ func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
 
 // Subscribe creates a subscription
 func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
+	srv.subsWaitGroup.Add(1)
+	defer srv.subsWaitGroup.Done()
+
 	//block until subscriptionRequest is received
 	r, err := stream.Recv()
 	if err != nil {
@@ -228,7 +242,7 @@ func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, s
 	for {
 		select {
 		case <-stream.Context().Done():
-			klog.V(4).ErrorS(stream.Context().Err(), "stopping ack stream watcher")
+			//klog.V(4).ErrorS(stream.Context().Err(), "stopping ack stream watcher")
 			return
 		default:
 			r, err := stream.Recv() //blocks
