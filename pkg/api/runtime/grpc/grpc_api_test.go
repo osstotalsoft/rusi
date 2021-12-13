@@ -538,12 +538,7 @@ func startServer(t testing.TB, ctx context.Context,
 	publishHandler messaging.PublishRequestHandler,
 	subscribeHandler messaging.SubscribeRequestHandler, listener net.Listener) *rusiServerImpl {
 
-	server := &rusiServerImpl{
-		mainCtx:          ctx,
-		refreshChannels:  []chan bool{},
-		publishHandler:   publishHandler,
-		subscribeHandler: subscribeHandler,
-	}
+	server := newRusiServer(ctx, publishHandler, subscribeHandler)
 	grpcServer := grpc.NewServer()
 	v1.RegisterRusiServer(grpcServer, server)
 
