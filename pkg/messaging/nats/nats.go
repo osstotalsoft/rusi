@@ -241,9 +241,9 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 
 		//run handler concurrently
 		go func() {
-			newCtx, cancel := context.WithTimeout(n.ctx, parsedOptions.AckWait)
-			defer cancel()
-			err = handler(newCtx, &msg)
+			//newCtx, cancel := context.WithTimeout(n.ctx, parsedOptions.AckWait)
+			//defer cancel()
+			err = handler(n.ctx, &msg)
 			if err == nil {
 				// we only send a successful ACK if there is no error
 				natsMsg.Ack()
