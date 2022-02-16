@@ -276,8 +276,8 @@ func getInt32AnnotationOrDefault(annotations map[string]string, key string, defa
 	return int32(value)
 }
 
-func getProbeHTTPHandler(port int32, pathElements ...string) corev1.Handler {
-	return corev1.Handler{
+func getProbeHTTPHandler(port int32, pathElements ...string) corev1.ProbeHandler {
+	return corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Path: formatProbePath(pathElements...),
 			Port: intstr.IntOrString{IntVal: port},
@@ -442,14 +442,14 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 		},
 		Args: args,
 		ReadinessProbe: &corev1.Probe{
-			Handler:             httpHandler,
+			ProbeHandler:        httpHandler,
 			InitialDelaySeconds: getInt32AnnotationOrDefault(annotations, rusiReadinessProbeDelayKey, defaultHealthzProbeDelaySeconds),
 			TimeoutSeconds:      getInt32AnnotationOrDefault(annotations, rusiReadinessProbeTimeoutKey, defaultHealthzProbeTimeoutSeconds),
 			PeriodSeconds:       getInt32AnnotationOrDefault(annotations, rusiReadinessProbePeriodKey, defaultHealthzProbePeriodSeconds),
 			FailureThreshold:    getInt32AnnotationOrDefault(annotations, rusiReadinessProbeThresholdKey, defaultHealthzProbeThreshold),
 		},
 		LivenessProbe: &corev1.Probe{
-			Handler:             httpHandler,
+			ProbeHandler:        httpHandler,
 			InitialDelaySeconds: getInt32AnnotationOrDefault(annotations, rusiLivenessProbeDelayKey, defaultHealthzProbeDelaySeconds),
 			TimeoutSeconds:      getInt32AnnotationOrDefault(annotations, rusiLivenessProbeTimeoutKey, defaultHealthzProbeTimeoutSeconds),
 			PeriodSeconds:       getInt32AnnotationOrDefault(annotations, rusiLivenessProbePeriodKey, defaultHealthzProbePeriodSeconds),
