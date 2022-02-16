@@ -2,14 +2,17 @@ package grpc
 
 import (
 	"context"
+	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	"k8s.io/klog/v2"
 	"net"
 	"reflect"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
+	"strconv"
 	"testing"
 	"time"
 
@@ -51,27 +54,10 @@ func Test_grpc_to_messaging_subscriptionOptions(t *testing.T) {
 func Test_RusiServer_Pubsub(t *testing.T) {
 	l := klog.Level(4)
 	l.Set("4")
-	store := messaging.NewInMemoryBus()
-	publishHandler := func(ctx context.Context, request messaging.PublishRequest) error {
-		return store.Publish(request.Topic, &messaging.MessageEnvelope{
-			Id:              uuid.New().String(),
-			Type:            request.Type,
-			SpecVersion:     "1.0",
-			DataContentType: request.DataContentType,
-			Time:            time.Time{},
-			Subject:         request.Topic,
-			Headers:         request.Metadata,
-			Payload:         request.Data,
-		})
-	}
-	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.CloseFunc, error) {
-		return store.Subscribe(request.Topic, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
-			return request.Handler(ctx, msg)
-		}, nil)
-	}
 
 	ctx := context.Background()
-	server := startServer(t, ctx, publishHandler, subscribeHandler)
+	store := messaging.NewInMemoryBus()
+	server, newClient := prepareNewInMemoryServer(t, ctx, store)
 
 	tests := []struct {
 		name             string
@@ -194,7 +180,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		closer()
 		//wait closing
 		err = waitInLoop(func() bool {
-			return store.IsDoneWorking()
+			return store.GetSubscribersCount(topic) == 0
 		})
 		assert.NoError(t, err)
 	})
@@ -249,7 +235,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		closer()
 		//wait closing
 		err = waitInLoop(func() bool {
-			return store.IsDoneWorking()
+			return store.GetSubscribersCount(topic) == 0
 		})
 		assert.NoError(t, err)
 	})
@@ -419,7 +405,7 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 		closer()
 		//wait closing
 		err = waitInLoop(func() bool {
-			return store.IsDoneWorking()
+			return store.GetSubscribersCount(topic) == 0
 		})
 		assert.NoError(t, err)
 	})
@@ -465,46 +451,118 @@ func Test_RusiServer_Pubsub(t *testing.T) {
 	err := waitInLoop(func() bool {
 		return store.IsDoneWorking()
 	})
-	if err != nil {
-		t.Fatal(err)
+	require.NoError(t, err)
+}
+
+func BenchmarkRusiServer_Subscribe(b *testing.B) {
+	b.ReportAllocs()
+	klog.ClearLogger()
+	klog.SetLogger(logr.Discard())
+
+	ctx := context.Background()
+	store := messaging.NewInMemoryBus()
+	_, newClient := prepareNewInMemoryServer(b, ctx, store)
+	client, closer := newClient(ctx, b)
+	defer closer()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		stream, err := client.Subscribe(ctx)
+		topic := "topic_" + strconv.Itoa(i)
+		b.StartTimer()
+		err = stream.Send(createSubscribeRequest(&v1.SubscriptionRequest{
+			PubsubName: "p1",
+			Topic:      topic,
+		}))
+		require.NoError(b, err)
+		err = waitInLoopInf(func() bool {
+			return store.GetSubscribersCount(topic) == 1
+		})
+		require.NoError(b, err)
+		_, err = client.Publish(ctx, &v1.PublishRequest{PubsubName: "p1", Topic: topic, Data: []byte("\"data1\"")})
+		require.NoError(b, err)
+		msg1, err := stream.Recv() //blocks
+		require.NoError(b, err)
+		err = stream.Send(createAckRequest(msg1.Id, ""))
+		require.NoError(b, err)
+		//wait for all handlers to complete
+		err = waitInLoopInf(func() bool {
+			return store.IsDoneWorking()
+		})
+		require.NoError(b, err)
 	}
 }
 
-const bufSize = 1024 * 1024
+func prepareNewInMemoryServer(t testing.TB, ctx context.Context, pubsub messaging.PubSub) (server *rusiServerImpl,
+	newClientFunc func(ctx context.Context, tt testing.TB) (v1.RusiClient, func())) {
 
-var lis *bufconn.Listener
+	publishHandler := func(ctx context.Context, request messaging.PublishRequest) error {
+		return pubsub.Publish(request.Topic, &messaging.MessageEnvelope{
+			Id:              uuid.New().String(),
+			Type:            request.Type,
+			SpecVersion:     "1.0",
+			DataContentType: request.DataContentType,
+			Time:            time.Time{},
+			Subject:         request.Topic,
+			Headers:         request.Metadata,
+			Payload:         request.Data,
+		})
+	}
+	subscribeHandler := func(ctx context.Context, request messaging.SubscribeRequest) (messaging.CloseFunc, error) {
+		return pubsub.Subscribe(request.Topic, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+			return request.Handler(ctx, msg)
+		}, nil)
+	}
 
-func startServer(t *testing.T, ctx context.Context, publishHandler messaging.PublishRequestHandler,
-	subscribeHandler messaging.SubscribeRequestHandler) *rusiServerImpl {
+	bufSize := 1024 * 1024
+	lis := bufconn.Listen(bufSize)
+	bufDialer := func(context.Context, string) (net.Conn, error) {
+		return lis.Dial()
+	}
+	newClientFunc = func(ctx context.Context, tt testing.TB) (v1.RusiClient, func()) {
+		conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+		if err != nil {
+			tt.Fatalf("Failed to dial bufnet: %v", err)
+		}
+		return v1.NewRusiClient(conn), func() {
+			conn.Close()
+		}
+	}
+	server = startServer(t, ctx, publishHandler, subscribeHandler, lis)
+	return server, newClientFunc
+}
+
+func startServer(t testing.TB, ctx context.Context,
+	publishHandler messaging.PublishRequestHandler,
+	subscribeHandler messaging.SubscribeRequestHandler, listener net.Listener) *rusiServerImpl {
+
 	server := newRusiServer(ctx, publishHandler, subscribeHandler)
-	lis = bufconn.Listen(bufSize)
 	grpcServer := grpc.NewServer()
 	v1.RegisterRusiServer(grpcServer, server)
 
 	go func() {
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := grpcServer.Serve(listener); err != nil {
 			t.Fatalf("Server exited with error: %v", err)
 		}
 	}()
 	return server
 }
-func bufDialer(context.Context, string) (net.Conn, error) {
-	return lis.Dial()
-}
-func newClient(ctx context.Context, t *testing.T) (v1.RusiClient, func()) {
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
-	if err != nil {
-		t.Fatalf("Failed to dial bufnet: %v", err)
+func waitInLoopInf(fun func() bool) error {
+	for {
+		if fun() {
+			break
+		}
 	}
-	return v1.NewRusiClient(conn), func() {
-		conn.Close()
-	}
+	return nil
 }
+
 func waitInLoop(fun func() bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	for {
-		time.Sleep(50 * time.Millisecond)
+		//time.Sleep(time.Millisecond)
 		if fun() {
 			break
 		}

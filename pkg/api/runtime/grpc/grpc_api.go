@@ -110,13 +110,13 @@ func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 
-	var s []chan bool
-	for _, channel := range srv.refreshChannels {
-		if channel != refreshChan {
-			s = append(s, channel)
+	for i, channel := range srv.refreshChannels {
+		if channel == refreshChan {
+			srv.refreshChannels[i] = srv.refreshChannels[len(srv.refreshChannels)-1]
+			srv.refreshChannels = srv.refreshChannels[:len(srv.refreshChannels)-1]
+			break
 		}
 	}
-	srv.refreshChannels = s
 }
 
 // Subscribe creates a subscription

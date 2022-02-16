@@ -44,14 +44,13 @@ func (c *inMemoryBus) Subscribe(topic string, handler Handler, options *Subscrip
 	return func() error {
 		c.mu.Lock()
 		defer c.mu.Unlock()
-		var s []*Handler
-		for _, h := range c.handlers[topic] {
-			if h != handlerP {
-				s = append(s, h)
+		for i, h := range c.handlers[topic] {
+			if h == handlerP {
+				c.handlers[topic][i] = c.handlers[topic][len(c.handlers[topic])-1]
+				c.handlers[topic] = c.handlers[topic][:len(c.handlers[topic])-1]
+				break
 			}
 		}
-		c.handlers[topic] = s
-
 		klog.InfoS("unSubscribe from topic " + topic)
 		return nil
 	}, nil
