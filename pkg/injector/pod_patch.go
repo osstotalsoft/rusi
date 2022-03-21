@@ -62,7 +62,7 @@ const (
 	sidecarHealthzPath                = "healthz"
 	defaultHealthzProbeDelaySeconds   = 3
 	defaultHealthzProbeTimeoutSeconds = 3
-	defaultHealthzProbePeriodSeconds  = 6
+	defaultHealthzProbePeriodSeconds  = 10
 	defaultHealthzProbeThreshold      = 3
 	trueString                        = "true"
 )
