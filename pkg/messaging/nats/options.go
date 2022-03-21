@@ -13,6 +13,7 @@ type options struct {
 	deliverNew              string
 	deliverAll              string
 	startAtTimeDelta        time.Duration
+	connectWait             time.Duration
 	startAtTime             string
 	startAtTimeFormat       string
 	ackWaitTime             time.Duration

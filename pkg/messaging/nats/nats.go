@@ -36,6 +36,7 @@ const (
 	startAtTimeFormat       = "startAtTimeFormat"
 	ackWaitTime             = "ackWaitTime"
 	maxInFlight             = "maxInFlight"
+	connectWait             = "connectWait"
 )
 
 // valid values for subscription options
@@ -68,6 +69,8 @@ func NewNATSStreamingPubSub() messaging.PubSub {
 
 func parseNATSStreamingMetadata(properties map[string]string) (options, error) {
 	m := options{}
+	m.connectWait = stan.DefaultConnectWait
+
 	if val, ok := properties[natsURL]; ok && val != "" {
 		m.natsURL = val
 	} else {
@@ -154,6 +157,12 @@ func parseNATSStreamingMetadata(properties map[string]string) (options, error) {
 			return m, fmt.Errorf("nats-streaming error %s ", err)
 		}
 		m.startAtTimeDelta = dur
+	} else if val, ok := properties[connectWait]; ok && val != "" {
+		wait, err := time.ParseDuration(properties[connectWait])
+		if err != nil {
+			return m, fmt.Errorf("nats-streaming error %s ", err)
+		}
+		m.connectWait = wait
 	} else if val, ok := properties[startAtTime]; ok && val != "" {
 		m.startAtTime = val
 		if val, ok := properties[startAtTimeFormat]; ok && val != "" {
@@ -174,7 +183,9 @@ func (n *natsStreamingPubSub) Init(properties map[string]string) error {
 	n.options = m
 	clientID := genRandomString(20)
 
-	natStreamingConn, err := stan.Connect(m.natsStreamingClusterID, clientID, stan.NatsURL(m.natsURL),
+	natStreamingConn, err := stan.Connect(m.natsStreamingClusterID, clientID,
+		stan.NatsURL(m.natsURL),
+		stan.ConnectWait(m.connectWait),
 		stan.SetConnectionLostHandler(func(conn stan.Conn, err error) {
 			klog.ErrorS(err, "connection lost")
 			n.closed = true
