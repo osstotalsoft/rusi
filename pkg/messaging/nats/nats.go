@@ -365,8 +365,7 @@ func (n *natsStreamingPubSub) IsHealthy(ctx context.Context) healthcheck.HealthR
 	if n.closed ||
 		n.natStreamingConn == nil ||
 		n.natStreamingConn.NatsConn() == nil ||
-		n.natStreamingConn.NatsConn().Status() == nats.CLOSED ||
-		n.natStreamingConn.NatsConn().Status() == nats.DISCONNECTED {
+		n.natStreamingConn.NatsConn().Status() != nats.CONNECTED {
 		return healthcheck.HealthResult{
 			Status:      healthcheck.Unhealthy,
 			Description: "nats pubsub connection is closed",
