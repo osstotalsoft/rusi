@@ -10,6 +10,7 @@ import (
 	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -149,6 +150,9 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 
 		if err != nil {
 			hCancel()
+			//give some time to recover while looping,
+			//TODO replace with wait.JitterUntil
+			time.Sleep(2 * time.Second)
 			return err
 		}
 
