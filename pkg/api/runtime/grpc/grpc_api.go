@@ -4,19 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"k8s.io/klog/v2"
 	"net"
 	"rusi/pkg/api/runtime"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
 	"sync"
-	"time"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"k8s.io/klog/v2"
 )
 
 func NewGrpcAPI(port int, serverOptions ...grpc.ServerOption) runtime.Api {
@@ -150,9 +148,6 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 
 		if err != nil {
 			hCancel()
-			//give some time to recover while looping,
-			//TODO replace with wait.JitterUntil
-			time.Sleep(2 * time.Second)
 			return err
 		}
 
