@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"k8s.io/klog/v2"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -20,8 +22,6 @@ import (
 	"rusi/pkg/runtime"
 	"sync"
 	"time"
-
-	"k8s.io/klog/v2"
 )
 
 func main() {
@@ -31,6 +31,10 @@ func main() {
 	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
 	defer klog.Flush()
+
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
 
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
 	cfgBuilder.AttachCmdFlags(flag.StringVar, flag.BoolVar, flag.IntVar)
