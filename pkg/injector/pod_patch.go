@@ -304,8 +304,8 @@ func appendQuantityToResourceList(quantity string, resourceName corev1.ResourceN
 
 func getResourceRequirements(annotations map[string]string) (*corev1.ResourceRequirements, error) {
 	r := corev1.ResourceRequirements{
-		Limits:   corev1.ResourceList{},
-		Requests: corev1.ResourceList{},
+		Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("512Mi")},
+		Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("20Mi")},
 	}
 	cpuLimit, ok := annotations[rusiCPULimitKey]
 	if ok {
