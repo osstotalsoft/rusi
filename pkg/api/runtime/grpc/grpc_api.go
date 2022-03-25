@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -70,7 +71,7 @@ type rusiServerImpl struct {
 	mu               sync.RWMutex
 	mainCtx          context.Context
 	subsWaitGroup    *sync.WaitGroup
-	refreshChannels  []chan bool
+	refreshChannels  map[string]chan bool
 	publishHandler   messaging.PublishRequestHandler
 	subscribeHandler messaging.SubscribeRequestHandler
 }
@@ -79,7 +80,7 @@ func newRusiServer(ctx context.Context,
 	publishHandler messaging.PublishRequestHandler,
 	subscribeHandler messaging.SubscribeRequestHandler) *rusiServerImpl {
 	return &rusiServerImpl{
-		refreshChannels:  []chan bool{},
+		refreshChannels:  map[string]chan bool{},
 		mainCtx:          ctx,
 		subsWaitGroup:    &sync.WaitGroup{},
 		publishHandler:   publishHandler,
@@ -96,26 +97,23 @@ func (srv *rusiServerImpl) Refresh() error {
 	return nil
 }
 
-func (srv *rusiServerImpl) createRefreshChan() chan bool {
+func (srv *rusiServerImpl) getRefreshChan(subId string) chan bool {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 
-	c := make(chan bool)
-	srv.refreshChannels = append(srv.refreshChannels, c)
-	return c
+	if c, ok := srv.refreshChannels[subId]; ok {
+		return c
+	} else {
+		c := make(chan bool)
+		srv.refreshChannels[subId] = c
+		return c
+	}
 }
 
-func (srv *rusiServerImpl) removeRefreshChan(refreshChan chan bool) {
+func (srv *rusiServerImpl) removeRefreshChan(subId string) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
-
-	var s []chan bool
-	for _, channel := range srv.refreshChannels {
-		if channel != refreshChan {
-			s = append(s, channel)
-		}
-	}
-	srv.refreshChannels = s
+	delete(srv.refreshChannels, subId)
 }
 
 // Subscribe creates a subscription
@@ -132,10 +130,9 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 	if request == nil {
 		return errors.New("invalid subscription request")
 	}
-
 	exit := false
-	refreshChan := srv.createRefreshChan()
-	defer srv.removeRefreshChan(refreshChan)
+	subId := uuid.NewString()
+	defer srv.removeRefreshChan(subId)
 	handler := srv.buildSubscribeHandler(stream)
 	for {
 		hCtx, hCancel := context.WithCancel(context.Background())
@@ -145,7 +142,6 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 			Handler:    handler(hCtx),
 			Options:    messagingSubscriptionOptions(request.GetOptions()),
 		})
-
 		if err != nil {
 			hCancel()
 			return err
@@ -159,7 +155,7 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 		case <-stream.Context().Done():
 			exit = true
 			err = stream.Context().Err()
-		case <-refreshChan:
+		case <-srv.getRefreshChan(subId):
 			exit = false
 			klog.V(4).InfoS("Refresh requested for", "topic", request.Topic)
 		}
