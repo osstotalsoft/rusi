@@ -56,8 +56,8 @@ func (srv *grpcApi) Serve(ctx context.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			//grpcServer.GracefulStop() should also work
-			grpcServer.Stop()
+			grpcServer.GracefulStop()
+			//grpcServer.Stop()
 		}
 	}()
 
@@ -164,6 +164,9 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 		_ = unsub()
 		if exit {
 			klog.V(4).InfoS("closing subscription stream", "topic", request.Topic, "error", err)
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
 			return err
 		}
 	}
