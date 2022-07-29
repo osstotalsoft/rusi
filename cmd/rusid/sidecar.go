@@ -5,6 +5,8 @@ import (
 	"flag"
 	"k8s.io/klog/v2"
 	"net/http"
+	"syscall"
+
 	//_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -88,7 +90,7 @@ func main() {
 
 func shutdownOnInterrupt(cancel func()) {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-c
