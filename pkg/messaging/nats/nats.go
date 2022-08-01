@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/nats-io/nats.go"
 	"math/rand"
 	"rusi/pkg/healthcheck"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	"strconv"
 	"time"
+
+	"github.com/nats-io/nats.go"
 
 	"k8s.io/klog/v2"
 
@@ -270,6 +271,10 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 		subs, err = n.natStreamingConn.Subscribe(topic, natsMsgHandler, stanOptions...)
 	} else if mergedOptions.subscriptionType == subscriptionTypeQueueGroup {
 		subs, err = n.natStreamingConn.QueueSubscribe(topic, n.options.natsQueueGroupName, natsMsgHandler, stanOptions...)
+	}
+
+	if err != nil {
+		klog.ErrorS(err, "nats-streaming: subscribe error", "topic", topic)
 	}
 
 	if err != nil || subs == nil {

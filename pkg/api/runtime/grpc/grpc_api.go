@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"k8s.io/klog/v2"
 	"net"
 	"rusi/pkg/api/runtime"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	v1 "rusi/pkg/proto/runtime/v1"
 	"sync"
+
+	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"k8s.io/klog/v2"
 )
 
 func NewGrpcAPI(port int, serverOptions ...grpc.ServerOption) runtime.Api {
@@ -133,7 +134,7 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 	exit := false
 	subId := uuid.NewString()
 	defer srv.removeRefreshChan(subId)
-	handler := srv.buildSubscribeHandler(stream)
+	handler := srv.buildSubscribeHandler(stream, request)
 	for {
 		hCtx, hCancel := context.WithCancel(context.Background())
 		unsub, err := srv.subscribeHandler(hCtx, messaging.SubscribeRequest{
@@ -177,23 +178,23 @@ type subAck struct {
 	errCh      chan error
 }
 
-func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer) func(context.Context) messaging.Handler {
+func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer, sr *v1.SubscriptionRequest) func(context.Context) messaging.Handler {
 
 	subAckMap := map[string]*subAck{}
 	mu := &sync.RWMutex{}
 
 	//monitor incoming ack stream for the current subscription
-	go startAckReceiverForStream(subAckMap, mu, stream)
+	go startAckReceiverForStream(subAckMap, mu, stream, sr)
 
 	return func(buildCtx context.Context) messaging.Handler {
 		return func(ctx context.Context, env *messaging.MessageEnvelope) error {
 			if env.Id == "" {
-				return errors.New("message id is missing")
+				return fmt.Errorf("message id is missing for topic %s", env.Subject)
 			}
 
-			errChan := make(chan error)
+			ackChan := make(chan error)
 			mu.Lock()
-			subAckMap[env.Id] = &subAck{nil, errChan}
+			subAckMap[env.Id] = &subAck{nil, ackChan}
 			mu.Unlock()
 			//cleanup
 			defer func() {
@@ -220,13 +221,13 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 			select {
 			//handler builder closed context
 			case <-buildCtx.Done():
-				klog.V(4).InfoS("Context done before ack", "message", buildCtx.Err())
+				klog.V(4).InfoS("Context done before ack", "message", buildCtx.Err(), "topic", env.Subject)
 				return buildCtx.Err()
 			//subscriber context is done
 			case <-ctx.Done():
-				klog.V(4).InfoS("Context done before ack", "message", ctx.Err())
+				klog.V(4).InfoS("Context done before ack", "message", ctx.Err(), "topic", env.Subject)
 				return ctx.Err()
-			case err = <-errChan:
+			case err = <-ackChan:
 				klog.V(4).InfoS("Ack sent to pubsub", "topic", env.Subject, "Id", env.Id, "error", err)
 				return err
 			}
@@ -234,7 +235,7 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer)
 	}
 }
 
-func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, stream v1.Rusi_SubscribeServer) {
+func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, stream v1.Rusi_SubscribeServer, sr *v1.SubscriptionRequest) {
 
 	//wait for ack from the client
 	for {
@@ -245,20 +246,21 @@ func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, s
 		default:
 			r, err := stream.Recv() //blocks
 			if err != nil {
-				klog.V(4).ErrorS(err, "ack stream error")
+				klog.V(4).ErrorS(err, "ack stream error", "topic", sr.GetTopic())
 				break
 			}
-			if r.GetAckRequest() == nil {
-				klog.V(4).InfoS("invalid ack response")
+			ar := r.GetAckRequest()
+			if ar == nil {
+				klog.V(4).InfoS("invalid ack response", "topic", sr.GetTopic())
 				break
 			}
-			if r.GetAckRequest().GetError() != "" {
-				err = errors.New(r.GetAckRequest().GetError())
+			if ar.GetError() != "" {
+				err = errors.New(ar.GetError())
 			}
 
 			mu.RLock()
-			mid := r.GetAckRequest().GetMessageId()
-			klog.V(4).InfoS("Ack received for message", "Id", mid)
+			mid := ar.GetMessageId()
+			klog.V(4).InfoS("Ack received for message", "Id", mid, "topic", sr.GetTopic())
 			for id, ack := range subAckMap {
 				if id == mid {
 					if ack.ackHandler != nil {
