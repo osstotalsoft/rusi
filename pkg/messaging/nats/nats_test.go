@@ -412,10 +412,13 @@ func TestMergeGlobalAndSubscriptionOptions(t *testing.T) {
 		{"test subscription options with qGroup false", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{QGroup: &qGroupFalse}}, func() options {
 			result := globalSubscriptionOptions
 			result.natsQueueGroupName = ""
+			result.subscriptionType = subscriptionTypeTopic
 			return result
 		}, false},
 		{"test subscription options with qGroup true and global options qGroupName set", args{globalSubscriptionOptions, &messaging.SubscriptionOptions{QGroup: &qGroupTrue}}, func() options {
-			return globalSubscriptionOptions
+			result := globalSubscriptionOptions
+			result.subscriptionType = subscriptionTypeQueueGroup
+			return result
 		}, false},
 		{"test subscription options with qGroup true and global options qGroupName not set", args{options{natsQueueGroupName: ""}, &messaging.SubscriptionOptions{QGroup: &qGroupTrue}}, func() options {
 			return options{}

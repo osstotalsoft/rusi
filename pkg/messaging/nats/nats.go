@@ -397,10 +397,14 @@ func mergeGlobalAndSubscriptionOptions(globalOptions options, subscriptionOption
 	}
 
 	if subscriptionOptions.QGroup != nil {
-		if *subscriptionOptions.QGroup == false {
+		if *subscriptionOptions.QGroup {
+			if mergedOptions.natsQueueGroupName == "" {
+				return mergedOptions, errors.New("nats-streaming error: missing queue group name")
+			}
+			mergedOptions.subscriptionType = subscriptionTypeQueueGroup
+		} else {
 			mergedOptions.natsQueueGroupName = ""
-		} else if mergedOptions.natsQueueGroupName == "" {
-			return mergedOptions, errors.New("nats-streaming error: missing queue group name")
+			mergedOptions.subscriptionType = subscriptionTypeTopic
 		}
 	}
 	if subscriptionOptions.MaxConcurrentMessages != nil {
