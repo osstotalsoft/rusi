@@ -5,6 +5,7 @@ metadata:
   labels:
     app: rusi-sidecar-injector
 spec:
+  replicas: 2
   selector:
     matchLabels:
       app: rusi-sidecar-injector
