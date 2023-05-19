@@ -166,7 +166,7 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 		if exit {
 			klog.V(4).InfoS("closing subscription stream", "topic", request.Topic, "error", err)
 			if errors.Is(err, context.Canceled) {
-				return nil
+				err = status.Error(codes.Aborted, "Cancellation requested")
 			}
 			return err
 		}
