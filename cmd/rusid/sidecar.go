@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	//_ "net/http/pprof"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"os"
 	"os/signal"
 	"rusi/internal/diagnostics"
@@ -109,7 +110,8 @@ func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, appId strin
 
 	if enableMetrics {
 		exporter := metrics.SetupPrometheusMetrics(appId)
-		router.HandleFunc("/metrics", exporter.ServeHTTP)
+		metrics.CreateMeterProvider(appId, exporter)
+		router.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
 	} else {
 		metrics.SetNoopMeterProvider()
 	}

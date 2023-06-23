@@ -2,19 +2,22 @@ package metrics
 
 import (
 	"context"
-
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
-
+	api "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"k8s.io/klog/v2"
 	"sync"
 	"time"
 )
 
 type serviceMetrics struct {
-	pubsubMeter       metric.Meter
-	publishCount      metric.Int64Counter
-	subscribeDuration metric.Int64Histogram
+	pubsubMeter       api.Meter
+	publishCount      api.Int64Counter
+	subscribeDuration api.Int64Histogram
 }
 
 var (
@@ -30,39 +33,52 @@ func DefaultPubSubMetrics() *serviceMetrics {
 }
 
 func newServiceMetrics() *serviceMetrics {
-	meter := global.Meter("rusi.io/pubsub")
-	pubsubM := metric.Must(meter)
-
+	pubsubM := otel.GetMeterProvider().Meter("rusi.io/pubsub")
+	publishCount, err := pubsubM.Int64Counter("rusi.pubsub.publish.count",
+		api.WithDescription("The number of publishes"))
+	if err != nil {
+		klog.ErrorS(err, "cannot create Int64Counter")
+	}
+	subscribeDuration, err := pubsubM.Int64Histogram("rusi.pubsub.processing.duration",
+		api.WithDescription("The duration of a message execution"),
+		api.WithUnit("milliseconds"))
+	if err != nil {
+		klog.ErrorS(err, "cannot create Int64Histogram")
+	}
 	return &serviceMetrics{
-		pubsubMeter: meter,
-		publishCount: pubsubM.NewInt64Counter("rusi.pubsub.publish.count",
-			metric.WithDescription("The number of publishes")),
-		subscribeDuration: pubsubM.NewInt64Histogram("rusi.pubsub.processing.duration",
-			metric.WithDescription("The duration of a message execution"),
-			metric.WithUnit("milliseconds")),
+		pubsubMeter:       pubsubM,
+		publishCount:      publishCount,
+		subscribeDuration: subscribeDuration,
 	}
 }
 
 func (s *serviceMetrics) RecordPublishMessage(ctx context.Context, topic string, success bool) {
-	s.pubsubMeter.RecordBatch(
-		ctx,
-		[]attribute.KeyValue{
-			attribute.String("topic", topic),
-			attribute.Bool("success", success),
-		},
-		s.publishCount.Measurement(1))
+	opt := api.WithAttributes(
+		attribute.String("topic", topic),
+		attribute.Bool("success", success),
+	)
+	s.publishCount.Add(ctx, 1, opt)
 }
 
 func (s *serviceMetrics) RecordSubscriberProcessingTime(ctx context.Context, topic string, success bool, elapsed time.Duration) {
-	s.pubsubMeter.RecordBatch(
-		ctx,
-		[]attribute.KeyValue{
-			attribute.String("topic", topic),
-			attribute.Bool("success", success),
-		},
-		s.subscribeDuration.Measurement(elapsed.Milliseconds()))
+	opt := api.WithAttributes(
+		attribute.String("topic", topic),
+		attribute.Bool("success", success),
+	)
+	s.subscribeDuration.Record(ctx, elapsed.Milliseconds(), opt)
 }
 
+func CreateMeterProvider(appId string, exporter metric.Reader) {
+	r, _ := resource.New(context.Background(),
+		resource.WithHost(),
+		resource.WithAttributes(semconv.ServiceNameKey.String(appId)))
+
+	otel.SetMeterProvider(
+		metric.NewMeterProvider(
+			metric.WithReader(exporter),
+			metric.WithResource(r)),
+	)
+}
 func SetNoopMeterProvider() {
-	global.SetMeterProvider(metric.NewNoopMeterProvider())
+	otel.SetMeterProvider(noop.NewMeterProvider())
 }
