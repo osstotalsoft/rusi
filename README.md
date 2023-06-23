@@ -7,7 +7,7 @@ rusi
 ## Contributing on windows
 
 - Install Go: 
-  - Download Go for windows; Go 1.17
+  - Download Go for windows; Go 1.20
 - Editor: 
   - Visual studio Code + Go extension
 - Build: 

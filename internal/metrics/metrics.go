@@ -6,7 +6,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	api "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 	"k8s.io/klog/v2"
@@ -76,6 +78,17 @@ func CreateMeterProvider(appId string, exporter metric.Reader) {
 	otel.SetMeterProvider(
 		metric.NewMeterProvider(
 			metric.WithReader(exporter),
+			metric.WithView(metric.NewView(metric.Instrument{
+				Name:  "custom_histogram",
+				Scope: instrumentation.Scope{Name: "rusi.io/pubsub"},
+			},
+				metric.Stream{
+					Name: "bar",
+					Aggregation: aggregation.ExplicitBucketHistogram{
+						Boundaries: []float64{10, 100, 1000, 10000, 100000},
+					},
+				},
+			)),
 			metric.WithResource(r)),
 	)
 }

@@ -1,7 +1,7 @@
 ## Prerequisites
 Use **Windows Subsystem for Linux** (Ubuntu)
 
-1. Install go v1.17 from [here](https://golang.org/doc/install)
+1. Install go v1.20 from [here](https://golang.org/doc/install)
 
 2. Install make 
 ```bash
