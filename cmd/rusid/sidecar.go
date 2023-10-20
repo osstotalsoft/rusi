@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/klog/v2"
 	"net/http"
 	"syscall"
@@ -108,8 +109,8 @@ func startDiagnosticsServer(ctx context.Context, wg *sync.WaitGroup, appId strin
 	router.Handle("/healthz", healthcheck.HandlerFunc(options...))
 
 	if enableMetrics {
-		exporter := metrics.SetupPrometheusMetrics(appId)
-		router.HandleFunc("/metrics", exporter.ServeHTTP)
+		_ = metrics.SetupPrometheusMetrics(appId)
+		router.Handle("/metrics", promhttp.Handler())
 	} else {
 		metrics.SetNoopMeterProvider()
 	}
