@@ -11,6 +11,7 @@ import (
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	"strconv"
+	"strings"
 	"time"
 
 	"k8s.io/klog/v2"
@@ -23,11 +24,13 @@ const (
 
 // subscription options (optional)
 const (
-	deliverAll  = "deliverAll"
-	deliverNew  = "deliverNew"
-	ackWaitTime = "ackWaitTime"
-	maxInFlight = "maxInFlight"
-	connectWait = "connectWait"
+	deliverAll     = "deliverAll"
+	deliverNew     = "deliverNew"
+	ackWaitTime    = "ackWaitTime"
+	maxInFlight    = "maxInFlight"
+	connectWait    = "connectWait"
+	commandsStream = "commandsStream"
+	eventsStream   = "eventsStream"
 )
 
 // valid values for subscription options
@@ -94,6 +97,18 @@ func parseNATSStreamingMetadata(properties map[string]string) (options, error) {
 			return m, fmt.Errorf("jetStream error %s ", err)
 		}
 		m.connectWait = wait
+	}
+
+	if val, ok := properties[commandsStream]; ok && val != "" {
+		m.commandsStream = val
+	} else {
+		return m, errors.New("jetStream error: missing commandsStream")
+	}
+
+	if val, ok := properties[eventsStream]; ok && val != "" {
+		m.eventsStream = val
+	} else {
+		return m, errors.New("jetStream error: missing eventsStream")
 	}
 
 	//nolint:nestif
@@ -195,8 +210,6 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 
 		//run handler concurrently
 		go func() {
-			//newCtx, cancel := context.WithTimeout(n.ctx, parsedOptions.AckWait)
-			//defer cancel()
 			err = handler(n.ctx, &msg)
 			if err == nil {
 				// we only send a successful ACK if there is no error
@@ -208,7 +221,12 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 		}()
 	}
 
-	consumer, err := js.CreateOrUpdateConsumer(n.ctx, "sfsdf", cc)
+	isCommand := strings.Contains(strings.ToLower(topic), "commands.")
+	stream := mergedOptions.eventsStream
+	if isCommand {
+		stream = mergedOptions.commandsStream
+	}
+	consumer, err := js.CreateOrUpdateConsumer(n.ctx, stream, cc)
 	subs, err := consumer.Consume(natsMsgHandler)
 
 	if err != nil {

@@ -14,3 +14,7 @@ spec:
       value: 50s
     - name: maxInFlight
       value: '1'
+    - name: commandsStream
+      value: "commands_stream"
+    - name: eventsStream
+      value: "events_stream"
