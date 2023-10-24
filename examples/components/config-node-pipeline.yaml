@@ -5,14 +5,14 @@ metadata:
 spec:
   metric:
     enabled: true
-#  tracing:
-#    samplingRate: '1'
-#    jaeger:
-#      useAgent: false
-#      collectorEndpointAddress: 'http://kube-worker1.totalsoft.local:31034/api/traces'
+  tracing:
+    samplingRate: '1'
+    jaeger:
+      useAgent: false
+      collectorEndpointAddress: 'http://linux-ts1858:14268/api/traces'
 #  subscriberPipeline:
 #    handlers:
 #    - name: pubsub-uppercase
 #      type: middleware.pubsub.uppercase
   pubSub:
-    name: natsstreaming-pubsub
+    name: jetstream-pubsub

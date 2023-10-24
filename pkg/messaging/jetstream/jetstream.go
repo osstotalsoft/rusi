@@ -168,12 +168,11 @@ func (n *jetStreamPubSub) Publish(topic string, msg *messaging.MessageEnvelope) 
 		return err
 	}
 
-	klog.V(4).InfoS("Publishing message to NATS")
 	err = n.natsConn.Publish(topic, msgBytes)
 	if err != nil {
 		return fmt.Errorf("jetStream: error from publish: %s", err)
 	}
-	klog.V(4).InfoS("Published message to NATS", "topic", topic, "message", *msg)
+	klog.V(4).InfoS("Published message to JetStream", "topic", topic, "message", *msg)
 	return nil
 }
 
@@ -237,7 +236,7 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 		return nil, fmt.Errorf("jetStream: subscribe error %s", err)
 	}
 
-	logSubscribe(mergedOptions, topic)
+	logSubscribe(cc, topic)
 
 	return func() error {
 		klog.Infof("jetStream: unsubscribed from topic %s", topic)
@@ -246,8 +245,8 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 	}, nil
 }
 
-func logSubscribe(options options, topic string) {
-	klog.InfoS("jetStream: subscribed to", "options", options, "topic", topic)
+func logSubscribe(cc jetstream.ConsumerConfig, topic string) {
+	klog.InfoS("jetStream: subscribed to", "ConsumerConfig", cc, "topic", topic)
 }
 
 func (n *jetStreamPubSub) Close() error {
