@@ -1,59 +1,77 @@
 package jetstream
 
 import (
+	"github.com/nats-io/nats.go"
 	"reflect"
-	"rusi/pkg/messaging"
 	"testing"
 )
 
 func Test_parseNATSStreamingMetadata(t *testing.T) {
-	type args struct {
-		properties map[string]string
-	}
 	tests := []struct {
-		name    string
-		args    args
-		want    options
-		wantErr bool
+		name       string
+		properties map[string]string
+		want       options
+		wantErr    bool
 	}{
-		// TODO: Add test cases.
+		{
+			"missing url",
+			map[string]string{},
+			options{connectWait: nats.DefaultTimeout},
+			true,
+		},
+		{
+			"missing consumer id",
+			map[string]string{
+				natsURL: "nats://foo.bar:4222",
+			},
+			options{natsURL: "nats://foo.bar:4222", connectWait: nats.DefaultTimeout},
+			true,
+		},
+		{
+			"missing commands stream",
+			map[string]string{
+				natsURL:    "nats://foo.bar:4222",
+				consumerID: "consumerID",
+			},
+			options{natsURL: "nats://foo.bar:4222", connectWait: nats.DefaultTimeout,
+				durableSubscriptionName: "consumerID"},
+			true,
+		},
+		{
+			"missing events stream",
+			map[string]string{
+				natsURL:        "nats://foo.bar:4222",
+				consumerID:     "consumerID",
+				commandsStream: "commandsStream",
+			},
+			options{natsURL: "nats://foo.bar:4222", connectWait: nats.DefaultTimeout,
+				durableSubscriptionName: "consumerID", commandsStream: "commandsStream"},
+			true,
+		},
+		{
+			"should parse ok",
+			map[string]string{
+				natsURL:        "nats://foo.bar:4222",
+				consumerID:     "consumerID",
+				commandsStream: "commandsStream",
+				eventsStream:   "eventsStream",
+			},
+			options{natsURL: "nats://foo.bar:4222", connectWait: nats.DefaultTimeout,
+				durableSubscriptionName: "consumerID", commandsStream: "commandsStream",
+				eventsStream: "eventsStream"},
+			false,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseNATSStreamingMetadata(tt.args.properties)
+			got, err := parseNATSStreamingMetadata(tt.properties)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseNATSStreamingMetadata() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseNATSStreamingMetadata() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_mergeGlobalAndSubscriptionOptions(t *testing.T) {
-	type args struct {
-		globalOptions       options
-		subscriptionOptions *messaging.SubscriptionOptions
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    options
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := mergeGlobalAndSubscriptionOptions(tt.args.globalOptions, tt.args.subscriptionOptions)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("mergeGlobalAndSubscriptionOptions() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("mergeGlobalAndSubscriptionOptions() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
