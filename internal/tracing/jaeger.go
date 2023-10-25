@@ -18,7 +18,10 @@ import (
 // about the application.
 func jaegerTracerProvider(url string, useAgent bool, serviceName string) (*tracesdk.TracerProvider, error) {
 	// Set up a trace exporter
-	traceExporter, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithEndpoint(url))
+	traceExporter, err := otlptracegrpc.New(context.Background(),
+		otlptracegrpc.WithEndpoint(url),
+		otlptracegrpc.WithInsecure())
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}

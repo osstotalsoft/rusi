@@ -9,7 +9,7 @@ spec:
     samplingRate: '1'
     jaeger:
       useAgent: false
-      collectorEndpointAddress: 'http://linux-ts1858:14268/api/traces'
+      collectorEndpointAddress: 'linux-ts1858:4317'
 #  subscriberPipeline:
 #    handlers:
 #    - name: pubsub-uppercase
