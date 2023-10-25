@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/strings"
@@ -31,7 +31,7 @@ func PublisherTracingMiddleware() messaging.Middleware {
 				trace.WithSpanKind(trace.SpanKindProducer),
 				trace.WithAttributes(
 					attribute.String("component", "Rusi"),
-					semconv.MessagingDestinationKey.String(topic),
+					semconv.MessagingDestinationName(topic),
 					semconv.MessagingDestinationKindTopic))
 
 			defer span.End()
@@ -69,7 +69,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 				trace.WithSpanKind(trace.SpanKindConsumer),
 				trace.WithAttributes(
 					attribute.String("component", "Rusi"),
-					semconv.MessagingDestinationKey.String(topic),
+					semconv.MessagingDestinationName(topic),
 					semconv.MessagingDestinationKindTopic,
 					semconv.MessagingOperationReceive))
 

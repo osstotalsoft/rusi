@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/nats-io/stan.go"
 	"rusi/pkg/healthcheck"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
@@ -59,7 +58,7 @@ func NewJetStreamPubSub() messaging.PubSub {
 
 func parseNATSStreamingMetadata(properties map[string]string) (options, error) {
 	m := options{}
-	m.connectWait = stan.DefaultConnectWait
+	m.connectWait = nats.DefaultTimeout
 
 	if val, ok := properties[natsURL]; ok && val != "" {
 		m.natsURL = val
