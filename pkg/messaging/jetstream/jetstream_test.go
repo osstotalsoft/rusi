@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_parseNATSStreamingMetadata(t *testing.T) {
+func Test_parseMetadata(t *testing.T) {
 	tests := []struct {
 		name       string
 		properties map[string]string
@@ -65,7 +65,7 @@ func Test_parseNATSStreamingMetadata(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseNATSStreamingMetadata(tt.properties)
+			got, err := parseMetadata(tt.properties)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseNATSStreamingMetadata() error = %v, wantErr %v", err, tt.wantErr)
 				return

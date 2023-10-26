@@ -56,7 +56,7 @@ func NewJetStreamPubSub() messaging.PubSub {
 	return &jetStreamPubSub{}
 }
 
-func parseNATSStreamingMetadata(properties map[string]string) (options, error) {
+func parseMetadata(properties map[string]string) (options, error) {
 	m := options{}
 	m.connectWait = nats.DefaultTimeout
 
@@ -132,7 +132,7 @@ func parseNATSStreamingMetadata(properties map[string]string) (options, error) {
 }
 
 func (n *jetStreamPubSub) Init(properties map[string]string) error {
-	m, err := parseNATSStreamingMetadata(properties)
+	m, err := parseMetadata(properties)
 	if err != nil {
 		return err
 	}
