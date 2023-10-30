@@ -1,0 +1,20 @@
+apiVersion: rusi.io/v1alpha1
+kind: Component
+metadata:
+  name: jetstream-pubsub
+spec:
+  type: pubsub.jetstream
+  version: v1
+  metadata:
+    - name: natsURL
+      value: "nats://kube-worker1:31552"
+    - name: connectWait
+      value: 10s
+    - name: ackWaitTime
+      value: 50s
+    - name: maxInFlight
+      value: '1'
+    - name: commandsStream
+      value: "commands_stream"
+    - name: eventsStream
+      value: "events_stream"

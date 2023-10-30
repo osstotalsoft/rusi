@@ -6,6 +6,7 @@ import (
 	"rusi/pkg/custom-resource/components/middleware"
 	"rusi/pkg/custom-resource/components/pubsub"
 	"rusi/pkg/messaging"
+	"rusi/pkg/messaging/jetstream"
 	natsstreaming "rusi/pkg/messaging/nats"
 	"rusi/pkg/runtime"
 )
@@ -16,6 +17,9 @@ func RegisterComponentFactories() (result []runtime.Option) {
 		runtime.WithPubSubs(
 			pubsub.New("natsstreaming", func() messaging.PubSub {
 				return natsstreaming.NewNATSStreamingPubSub()
+			}),
+			pubsub.New("jetstream", func() messaging.PubSub {
+				return jetstream.NewJetStreamPubSub()
 			}),
 		),
 		runtime.WithPubsubMiddleware(

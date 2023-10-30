@@ -1,13 +1,15 @@
 package tracing
 
 import (
+	"context"
+	"fmt"
 	"os"
 
 	jaeger_propagators "go.opentelemetry.io/contrib/propagators/jaeger"
-	jaeger_exporters "go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
 // JaegerTracerProvider returns an OpenTelemetry TracerProvider configured to use
@@ -15,31 +17,27 @@ import (
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
 func jaegerTracerProvider(url string, useAgent bool, serviceName string) (*tracesdk.TracerProvider, error) {
-	// Create the Jaeger exporter
-	var exp *jaeger_exporters.Exporter
-	var err error
+	// Set up a trace exporter
+	traceExporter, err := otlptracegrpc.New(context.Background(),
+		otlptracegrpc.WithEndpoint(url),
+		otlptracegrpc.WithInsecure())
 
-	if useAgent {
-		exp, err = jaeger_exporters.New(jaeger_exporters.WithAgentEndpoint())
-	} else {
-		exp, err = jaeger_exporters.New(jaeger_exporters.WithCollectorEndpoint(jaeger_exporters.WithEndpoint(url)))
-	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}
-
 	hostName, _ := os.Hostname()
 
+	bsp := tracesdk.NewBatchSpanProcessor(traceExporter)
 	tp := tracesdk.NewTracerProvider(
-		// Always be sure to batch in production.
-		tracesdk.WithBatcher(exp),
-		// Record information about this application in an Resource.
+		tracesdk.WithSampler(tracesdk.AlwaysSample()),
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(serviceName),
 			semconv.HostNameKey.String(hostName),
 		)),
+		tracesdk.WithSpanProcessor(bsp),
 	)
+
 	return tp, nil
 }
 
