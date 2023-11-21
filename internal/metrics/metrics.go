@@ -42,7 +42,8 @@ func newServiceMetrics() *serviceMetrics {
 
 	subscribeDurationSec, _ := pubsubM.Float64Histogram("rusi.pubsub.processing.duration.seconds",
 		metric.WithDescription("The duration of a message execution"),
-		metric.WithUnit("seconds"))
+		metric.WithUnit("seconds"),
+		metric.WithExplicitBucketBoundaries(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 4, 5, 7.5, 10, 15, 20, 30, 35, 40))
 
 	return &serviceMetrics{
 		pubsubMeter:          pubsubM,
