@@ -11,9 +11,10 @@ import (
 )
 
 type serviceMetrics struct {
-	pubsubMeter       metric.Meter
-	publishCount      metric.Int64Counter
-	subscribeDuration metric.Int64Histogram
+	pubsubMeter          metric.Meter
+	publishCount         metric.Int64Counter
+	subscribeDurationMs  metric.Int64Histogram
+	subscribeDurationSec metric.Float64Histogram
 }
 
 var (
@@ -34,14 +35,20 @@ func newServiceMetrics() *serviceMetrics {
 	publishCount, _ := pubsubM.Int64Counter("rusi.pubsub.publish.count",
 		metric.WithDescription("The number of publishes"))
 
-	subscribeDuration, _ := pubsubM.Int64Histogram("rusi.pubsub.processing.duration",
+	//TODO should be removed
+	subscribeDurationMs, _ := pubsubM.Int64Histogram("rusi.pubsub.processing.duration",
 		metric.WithDescription("The duration of a message execution"),
 		metric.WithUnit("milliseconds"))
 
+	subscribeDurationSec, _ := pubsubM.Float64Histogram("rusi.pubsub.processing.duration.seconds",
+		metric.WithDescription("The duration of a message execution"),
+		metric.WithUnit("seconds"))
+
 	return &serviceMetrics{
-		pubsubMeter:       pubsubM,
-		publishCount:      publishCount,
-		subscribeDuration: subscribeDuration,
+		pubsubMeter:          pubsubM,
+		publishCount:         publishCount,
+		subscribeDurationMs:  subscribeDurationMs,
+		subscribeDurationSec: subscribeDurationSec,
 	}
 }
 
@@ -58,7 +65,8 @@ func (s *serviceMetrics) RecordSubscriberProcessingTime(ctx context.Context, top
 		attribute.String("topic", topic),
 		attribute.Bool("success", success),
 	)
-	s.subscribeDuration.Record(ctx, elapsed.Milliseconds(), opt)
+	s.subscribeDurationMs.Record(ctx, elapsed.Milliseconds(), opt)
+	s.subscribeDurationSec.Record(ctx, elapsed.Seconds(), opt)
 }
 
 func SetNoopMeterProvider() {
