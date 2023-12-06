@@ -38,6 +38,7 @@ func NewComponentsManager(ctx context.Context, appId string,
 	for _, opt := range opts {
 		opt(&runtimeOpts)
 	}
+	klog.V(4).InfoS("Components channel creation started")
 
 	compChan, err := componentsLoader(ctx)
 	klog.V(4).InfoS("Components channel created")

@@ -43,8 +43,11 @@ func GetComponentsWatcher(ctx context.Context, address string, wg *sync.WaitGrou
 	return func(ctx context.Context) (<-chan components.Spec, error) {
 		c := make(chan components.Spec)
 		namespace := kube.GetCurrentNamespace()
+		klog.V(4).InfoS("Got CurrentNamespace")
 		req := &operatorv1.WatchComponentsRequest{Namespace: namespace}
 		stream, err := client.WatchComponents(ctx, req)
+		klog.V(4).InfoS("Got WatchComponents grpc stream")
+
 		if err != nil {
 			return nil, err
 		}
