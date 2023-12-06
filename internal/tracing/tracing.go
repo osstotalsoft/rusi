@@ -21,8 +21,11 @@ func SetTracing(tp trace.TracerProvider, propagator propagation.TextMapPropagato
 // FlushTracer cleanly shutdown and flush telemetry when the application exits.
 func FlushTracer(tp *tracesdk.TracerProvider) func() {
 	return func() {
+
+		klog.V(4).InfoS("Trying to stop TracerProvider")
+
 		// Do not make the application hang when it is shutdown.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*6)
 		defer cancel()
 		if err := tp.Shutdown(ctx); err != nil {
 			klog.ErrorS(err, "Tracer shutdown error")

@@ -40,6 +40,8 @@ func NewComponentsManager(ctx context.Context, appId string,
 	}
 
 	compChan, err := componentsLoader(ctx)
+	klog.V(4).InfoS("Components channel created")
+
 	if err != nil {
 		klog.ErrorS(err, "error loading components")
 		return nil, err
@@ -55,8 +57,10 @@ func NewComponentsManager(ctx context.Context, appId string,
 		pubSubRegistry:         pubsub.NewRegistry(),
 		middlewareRegistry:     components_middleware.NewRegistry(),
 	}
+
 	manager.pubSubRegistry.Register(runtimeOpts.pubsubs...)
 	manager.middlewareRegistry.Register(runtimeOpts.pubsubMiddleware...)
+	klog.V(4).InfoS("Components added to registry")
 
 	go manager.watchComponentsUpdates()
 
