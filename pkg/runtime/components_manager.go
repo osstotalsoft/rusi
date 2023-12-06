@@ -38,10 +38,7 @@ func NewComponentsManager(ctx context.Context, appId string,
 	for _, opt := range opts {
 		opt(&runtimeOpts)
 	}
-	klog.V(4).InfoS("Components channel creation started")
-
 	compChan, err := componentsLoader(ctx)
-	klog.V(4).InfoS("Components channel created")
 
 	if err != nil {
 		klog.ErrorS(err, "error loading components")
@@ -61,7 +58,6 @@ func NewComponentsManager(ctx context.Context, appId string,
 
 	manager.pubSubRegistry.Register(runtimeOpts.pubsubs...)
 	manager.middlewareRegistry.Register(runtimeOpts.pubsubMiddleware...)
-	klog.V(4).InfoS("Components added to registry")
 
 	go manager.watchComponentsUpdates()
 
