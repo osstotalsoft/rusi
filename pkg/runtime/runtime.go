@@ -35,6 +35,7 @@ func NewRuntime(ctx context.Context, config Config, api runtime_api.Api,
 	configurationLoader configuration_loader.ConfigurationLoader,
 	manager *ComponentsManager) (*runtime, error) {
 
+	klog.InfoS("Loading configuration")
 	configChan, err := configurationLoader(ctx)
 	if err != nil {
 		klog.ErrorS(err, "error loading application config", "name",
@@ -43,7 +44,7 @@ func NewRuntime(ctx context.Context, config Config, api runtime_api.Api,
 	}
 
 	//block until config arrives
-	klog.InfoS("waiting for configuration")
+	klog.InfoS("Waiting for configuration changes")
 	rt := &runtime{
 		api:   api,
 		ctx:   ctx,

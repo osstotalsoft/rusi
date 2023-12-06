@@ -33,6 +33,7 @@ func main() {
 	//https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	klog.InitFlags(nil)
 	defer klog.Flush()
+	klog.InfoS("Rusid is starting")
 
 	cfgBuilder := runtime.NewRuntimeConfigBuilder()
 	cfgBuilder.AttachCmdFlags(flag.StringVar, flag.BoolVar, flag.IntVar)
@@ -47,10 +48,12 @@ func main() {
 	if cfg.Mode == modes.KubernetesMode {
 		compLoader = operator.GetComponentsWatcher(mainCtx, cfg.ControlPlaneAddress, wg)
 		configLoader = operator.GetConfigurationWatcher(mainCtx, cfg.ControlPlaneAddress, cfg.Config, wg)
+		klog.InfoS("KubernetesMode enabled")
 	}
 
 	//setup tracing
 	go diagnostics.WatchConfig(mainCtx, configLoader, tracing.SetJaegerTracing(cfg.AppID))
+	klog.InfoS("Setup opentelemetry finished")
 
 	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,
 		RegisterComponentFactories()...)
@@ -58,15 +61,17 @@ func main() {
 		klog.Error(err)
 		return
 	}
+	klog.InfoS("Components manager is running")
 
 	api := grpc_api.NewGrpcAPI(cfg.RusiGRPCPort)
+	klog.InfoS("Rusi grpc server is running")
 	rt, err := runtime.NewRuntime(mainCtx, cfg, api, configLoader, compManager)
 	if err != nil {
 		klog.Error(err)
 		return
 	}
 
-	klog.InfoS("Rusid is starting", "port", cfg.RusiGRPCPort,
+	klog.InfoS("Rusid is started", "port", cfg.RusiGRPCPort,
 		"app id", cfg.AppID, "mode", cfg.Mode, "version", version.Version(),
 		"git commit", version.Commit(), "git version", version.GitVersion())
 	klog.InfoS("Rusid is using", "config", cfg)

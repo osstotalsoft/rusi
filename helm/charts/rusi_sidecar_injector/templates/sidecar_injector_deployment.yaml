@@ -64,6 +64,7 @@ spec:
 {{- end }}
         - "--v"
         - "{{ .Values.logLevel }}"
+        - "--validate_service_account=false"
 {{- if eq .Values.global.prometheus.enabled true }}
         - "--enable-metrics"
         - "--metrics-port"
