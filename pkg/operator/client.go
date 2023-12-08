@@ -14,22 +14,22 @@ import (
 )
 
 func newClient(ctx context.Context, address string) (operatorv1.RusiOperatorClient, error) {
-	//var retryPolicy = `{
-	//	"methodConfig": [{
-	//	  "name": [{"service": "rusi.proto.operator.v1.RusiOperator"}],
-	//	  "waitForReady": true,
-	//	  "retryPolicy": {
-	//		  "MaxAttempts": 4,
-	//		  "InitialBackoff": ".01s",
-	//		  "MaxBackoff": ".01s",
-	//		  "BackoffMultiplier": 1.0,
-	//		  "RetryableStatusCodes": [ "UNAVAILABLE" ]
-	//	  }
-	//	}]}`
+	var retryPolicy = `{
+		"methodConfig": [{
+		  "name": [{"service": "rusi.proto.operator.v1.RusiOperator"}],
+		  "waitForReady": true,
+		  "retryPolicy": {
+			  "MaxAttempts": 4,
+			  "InitialBackoff": ".01s",
+			  "MaxBackoff": ".01s",
+			  "BackoffMultiplier": 1.0,
+			  "RetryableStatusCodes": [ "UNAVAILABLE" ]
+		  }
+		}]}`
 
-	//conn, err = grpc.DialContext(ctx, address, grpc.WithInsecure(), grpc.WithDefaultServiceConfig(retryPolicy))
-
-	conn, conErr := grpc.DialContext(ctx, address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, conErr := grpc.DialContext(ctx, address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(retryPolicy))
 	if conErr != nil {
 		return nil, conErr
 	}

@@ -37,14 +37,9 @@ func (opsrv *operatorServer) WatchConfiguration(request *operatorv1.WatchConfigu
 }
 
 func (opsrv *operatorServer) WatchComponents(request *operatorv1.WatchComponentsRequest, stream operatorv1.RusiOperator_WatchComponentsServer) error {
-
-	klog.V(4).InfoS("Starting streaming components")
-
 	c := make(chan rusiv1.Component)
 	opsrv.ow.addComponentListener(c)
 	defer opsrv.ow.removeComponentListener(c)
-
-	klog.V(4).InfoS("Starting consuming components channel")
 
 	for {
 		select {
