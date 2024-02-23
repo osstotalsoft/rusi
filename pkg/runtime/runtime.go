@@ -15,8 +15,8 @@ import (
 	"rusi/pkg/runtime/service"
 	"time"
 
+	"errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 )
 

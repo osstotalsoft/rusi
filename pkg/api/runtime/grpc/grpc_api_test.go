@@ -2,8 +2,8 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	"net"
 	"reflect"

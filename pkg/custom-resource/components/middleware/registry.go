@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/messaging"
 	"strings"
@@ -52,7 +52,7 @@ func (p *pubsubMiddlewareRegistry) Create(name, version string, properties map[s
 	if method, ok := p.getMiddleware(name, version); ok {
 		return method(properties), nil
 	}
-	return nil, errors.Errorf("Pubsub middleware %s/%s has not been registered", name, version)
+	return nil, fmt.Errorf("Pubsub middleware %s/%s has not been registered", name, version)
 }
 
 func (p *pubsubMiddlewareRegistry) getMiddleware(name, version string) (func(properties map[string]string) messaging.Middleware, bool) {

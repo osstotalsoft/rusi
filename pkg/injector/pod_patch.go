@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 
 	v1 "k8s.io/api/admission/v1"
@@ -81,8 +80,7 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 	req := ar.Request
 	var pod corev1.Pod
 	if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
-		errors.Wrap(err, "could not unmarshal raw object")
-		return nil, err
+		return nil, fmt.Errorf("could not unmarshal raw object: %w", err)
 	}
 
 	klog.Infof(
@@ -311,7 +309,7 @@ func getResourceRequirements(annotations map[string]string) (*corev1.ResourceReq
 	if ok {
 		list, err := appendQuantityToResourceList(cpuLimit, corev1.ResourceCPU, r.Limits)
 		if err != nil {
-			return nil, errors.Wrap(err, "error parsing sidecar cpu limit")
+			return nil, fmt.Errorf("error parsing sidecar cpu limit: %w", err)
 		}
 		r.Limits = *list
 	}
@@ -319,7 +317,7 @@ func getResourceRequirements(annotations map[string]string) (*corev1.ResourceReq
 	if ok {
 		list, err := appendQuantityToResourceList(memLimit, corev1.ResourceMemory, r.Limits)
 		if err != nil {
-			return nil, errors.Wrap(err, "error parsing sidecar memory limit")
+			return nil, fmt.Errorf("error parsing sidecar memory limit: %w", err)
 		}
 		r.Limits = *list
 	}
@@ -327,7 +325,7 @@ func getResourceRequirements(annotations map[string]string) (*corev1.ResourceReq
 	if ok {
 		list, err := appendQuantityToResourceList(cpuRequest, corev1.ResourceCPU, r.Requests)
 		if err != nil {
-			return nil, errors.Wrap(err, "error parsing sidecar cpu request")
+			return nil, fmt.Errorf("error parsing sidecar cpu request: %w", err)
 		}
 		r.Requests = *list
 	}
@@ -335,7 +333,7 @@ func getResourceRequirements(annotations map[string]string) (*corev1.ResourceReq
 	if ok {
 		list, err := appendQuantityToResourceList(memRequest, corev1.ResourceMemory, r.Requests)
 		if err != nil {
-			return nil, errors.Wrap(err, "error parsing sidecar memory request")
+			return nil, fmt.Errorf("error parsing sidecar memory request: %w", err)
 		}
 		r.Requests = *list
 	}

@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
@@ -82,14 +80,12 @@ func loadComponentsFromFile(path string) ([]components.Spec, error) {
 	var comps []components.Spec
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		klog.Errorf("load components error when reading file %s : %s", path, err)
+		klog.ErrorS(err, "load components error when reading file", "path", path)
 		return comps, err
 	}
 	comps, errs = decodeYaml(b)
 	for _, err := range errs {
-		errStr := fmt.Sprintf("load components error when parsing components yaml resource in %s : %s", path, err)
-		klog.Error(errStr)
-		err = errors.Wrap(err, errStr)
+		klog.ErrorS(err, "load components error when parsing components yaml resource", "path", path)
 	}
 	return comps, err
 }
