@@ -3,7 +3,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"k8s.io/klog/v2"
 	"reflect"
 	"rusi/pkg/custom-resource/components"
@@ -99,7 +98,7 @@ func (m *ComponentsManager) addOrUpdateComponent(spec components.Spec) (err erro
 	case category == components.PubsubComponent && operation == components.Insert:
 		err = m.initPubSub(spec)
 	default:
-		err = errors.Errorf("invalid category %s or operation %s for this component %s",
+		err = fmt.Errorf("invalid category %s or operation %s for this component %s",
 			category, spec.Name, operation)
 		return
 	}
@@ -165,7 +164,7 @@ func (m *ComponentsManager) GetMiddleware(middlewareSpec configuration.HandlerSp
 	component, exists := m.getComponent(middlewareSpec.Type, middlewareSpec.Name)
 	if !exists {
 		return nil,
-			errors.Errorf("couldn't find middleware component with name %s and type %s/%s",
+			fmt.Errorf("couldn't find middleware component with name %s and type %s/%s",
 				middlewareSpec.Name,
 				middlewareSpec.Type,
 				middlewareSpec.Version)

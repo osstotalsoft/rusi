@@ -1,8 +1,8 @@
 package injector
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"regexp"
 )
 

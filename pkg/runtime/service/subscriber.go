@@ -32,7 +32,7 @@ func (srv *subscriberService) StartSubscribing(request messaging.SubscribeReques
 		ctx = context.WithValue(ctx, messaging.TopicKey, request.Topic)
 		err := pipe(ctx, env)
 		if err != nil {
-			klog.ErrorS(err, "error calling handler")
+			klog.ErrorS(err, "error calling pipeline")
 		}
 		return err
 	}, request.Options)

@@ -256,9 +256,9 @@ func (n *natsStreamingPubSub) Subscribe(topic string, handler messaging.Handler,
 			//newCtx, cancel := context.WithTimeout(n.ctx, parsedOptions.AckWait)
 			//defer cancel()
 			err = handler(n.ctx, &msg)
-			if err == nil {
+			if err == nil || errors.Is(err, messaging.ErrMessageAcknowledgedWithError) {
 				// we only send a successful ACK if there is no error
-				natsMsg.Ack()
+				_ = natsMsg.Ack()
 				klog.V(4).InfoS("Manual ack", "topic", natsMsg.Subject, "Id", msg.Id)
 			} else {
 				klog.ErrorS(err, "Error running subscriber pipeline, message was not ACK", "topic", natsMsg.Subject)

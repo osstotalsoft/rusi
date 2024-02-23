@@ -2,7 +2,7 @@ package runtime
 
 import (
 	"context"
-	"github.com/pkg/errors"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	runtime_api "rusi/pkg/api/runtime"
 	"rusi/pkg/custom-resource/components"

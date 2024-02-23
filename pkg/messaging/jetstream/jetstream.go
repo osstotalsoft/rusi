@@ -209,7 +209,7 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 		//run handler concurrently
 		go func() {
 			err = handler(n.ctx, &msg)
-			if err == nil {
+			if err == nil || errors.Is(err, messaging.ErrMessageAcknowledgedWithError) {
 				// we only send a successful ACK if there is no error
 				_ = natsMsg.Ack()
 				klog.V(4).InfoS("Manual ack", "topic", natsMsg.Subject(), "Id", msg.Id)
