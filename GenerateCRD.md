@@ -7,9 +7,9 @@ Use **Windows Subsystem for Linux** (Ubuntu)
 ```bash
 apt install make
 ```
-3. Install the kubernetes code generator (from outside the rusi project folder):
+1. Install the kubernetes code generator:
 ```bash
-go get k8s.io/code-generator@v0.22.2
+go install k8s.io/code-generator@v0.22.2
 sudo chmod 777 ~/go/pkg/mod/k8s.io/code-generator@v0.22.2/generate-groups.sh
 ```
 
