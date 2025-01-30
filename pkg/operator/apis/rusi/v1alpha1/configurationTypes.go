@@ -24,7 +24,7 @@ type ConfigurationSpec struct {
 	// +optional
 	PublisherPipelineSpec PipelineSpec `json:"publisherPipeline,omitempty"`
 	// +optional
-	TracingSpec TracingSpec `json:"tracing,omitempty"`
+	Telemetry TelemetrySpec `json:"telemetry,omitempty"`
 	// +optional
 	Features []FeatureSpec `json:"features,omitempty"`
 	// +optional
@@ -44,15 +44,25 @@ type HandlerSpec struct {
 	Type string `json:"type"`
 }
 
-// TracingSpec defines distributed tracing configuration.
-type TracingSpec struct {
-	Jaeger JaegerSpec `json:"jaeger"`
+type TelemetrySpec struct {
+	// Tracing configuration.
+	// +optional
+	Tracing TracingSpec `json:"tracing,omitempty"`
 }
 
-// JaegerSpec defines Jaeger trace configurations.
-type JaegerSpec struct {
-	UseAgent                 bool   `json:"useAgent"`
-	CollectorEndpointAddress string `json:"collectorEndpointAddress"`
+type TelemetryPropagator string
+
+const (
+	TelemetryPropagatorW3c    = TelemetryPropagator("w3c")
+	TelemetryPropagatorJaeger = TelemetryPropagator("jaeger")
+)
+
+// TracingSpec defines distributed tracing configuration.
+type TracingSpec struct {
+	// Telemetry propagator. Possible values: w3c, jaeger
+	// +kubebuilder:validation:Enum=w3c;jaeger
+	// +kubebuilder:default:=w3c
+	Propagator TelemetryPropagator `json:"propagator"`
 }
 
 // FeatureSpec defines the features that are enabled/disabled.
