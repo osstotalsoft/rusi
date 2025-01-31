@@ -15,7 +15,7 @@ type Configuration struct {
 type Spec struct {
 	SubscriberPipelineSpec PipelineSpec  `json:"subscriberPipeline,omitempty" yaml:"subscriberPipeline,omitempty"`
 	PublisherPipelineSpec  PipelineSpec  `json:"publisherPipeline,omitempty" yaml:"publisherPipeline,omitempty"`
-	TracingSpec            TracingSpec   `json:"tracing,omitempty"  yaml:"tracing,omitempty"`
+	Telemetry              TelemetrySpec `json:"telemetry,omitempty"  yaml:"telemetry,omitempty"`
 	Features               []FeatureSpec `json:"features,omitempty" yaml:"features,omitempty"`
 	PubSubSpec             PubSubSpec    `json:"pubSub,omitempty" yaml:"pubSub,omitempty"`
 	MinRuntimeVersion      string        `json:"minRuntimeVersion,omitempty" yaml:"minRuntimeVersion,omitempty"`
@@ -33,15 +33,26 @@ type HandlerSpec struct {
 	Version string `json:"version" yaml:"version"`
 }
 
-// TracingSpec defines distributed tracing configuration.
-type TracingSpec struct {
-	Jaeger JaegerSpec `json:"jaeger" yaml:"jaeger"`
+// Telemetry related configuration.
+type TelemetrySpec struct {
+	// Telemetry collector enpoint address.
+	CollectorEndpoint string `json:"collectorEndpoint"  yaml:"collectorEndpoint"`
+	// Tracing configuration.
+	// +optional
+	Tracing TracingSpec `json:"tracing,omitempty" yaml:"tracing"`
 }
 
-// JaegerSpec defines Jaeger trace configurations.
-type JaegerSpec struct {
-	UseAgent                 bool   `json:"useAgent" yaml:"useAgent"`
-	CollectorEndpointAddress string `json:"collectorEndpointAddress" yaml:"collectorEndpointAddress"`
+type TelemetryPropagator string
+
+const (
+	TelemetryPropagatorW3c    = TelemetryPropagator("w3c")
+	TelemetryPropagatorJaeger = TelemetryPropagator("jaeger")
+)
+
+// TracingSpec defines distributed tracing configuration.
+type TracingSpec struct {
+	// Telemetry propagator. Possible values: w3c, jaeger
+	Propagator TelemetryPropagator `json:"propagator" yaml:"propagator"`
 }
 
 // FeatureSpec defines the features that are enabled/disabled.
