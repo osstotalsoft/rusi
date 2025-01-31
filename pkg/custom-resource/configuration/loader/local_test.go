@@ -31,10 +31,10 @@ kind: Configuration
 metadata:
   name: secretappconfig
 spec:
-  tracing:
-    jaeger:
-      collectorEndpointAddress: "${RUSI_JAEGER_COLLECTOR_ENDPOINT}" 
-      useAgent: false `)
+  telemetry:
+    collectorEndpoint: "${RUSI_TELEMETRY_COLLECTOR_ENDPOINT}"
+    tracing:
+      propagator: w3c `)
 
 	defer os.Remove("config.yaml")
 	defer os.Remove("env_variables_config.yaml")
@@ -70,12 +70,12 @@ spec:
 	}
 
 	t.Run("Parse environment variables", func(t *testing.T) {
-		os.Setenv("RUSI_JAEGER_COLLECTOR_ENDPOINT", "http://localhost:42323")
+		os.Setenv("RUSI_TELEMETRY_COLLECTOR_ENDPOINT", "http://localhost:42323")
 		configChan, err := LoadStandaloneConfiguration("env_variables_config.yaml")(ctx)
 		config := <-configChan
 		assert.NoError(t, err, "Unexpected error")
 		assert.NotNil(t, config, "Config not loaded as expected")
-		assert.Equal(t, "http://localhost:42323", config.TracingSpec.Jaeger.CollectorEndpointAddress)
+		assert.Equal(t, "http://localhost:42323", config.Telemetry.CollectorEndpoint)
 	})
 
 	t.Run("Load config file", func(t *testing.T) {

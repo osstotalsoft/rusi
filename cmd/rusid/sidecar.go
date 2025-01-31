@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"k8s.io/klog/v2"
 	"net/http"
 	"syscall"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/klog/v2"
 
 	//_ "net/http/pprof"
 	"os"
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	//setup tracing
-	go diagnostics.WatchConfig(mainCtx, configLoader, tracing.SetJaegerTracing(cfg.AppID))
+	go diagnostics.WatchConfig(mainCtx, configLoader, tracing.SetTracing(cfg.AppID))
 	klog.InfoS("Setup opentelemetry finished")
 
 	compManager, err := runtime.NewComponentsManager(mainCtx, cfg.AppID, compLoader,

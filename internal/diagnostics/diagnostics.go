@@ -9,7 +9,7 @@ import (
 )
 
 func WatchConfig(ctx context.Context, configLoader configuration_loader.ConfigurationLoader,
-	tracerFunc func(url string, useAgent bool) (func(), error)) {
+	tracerFunc func(url string, propagator configuration.TelemetryPropagator) (func(), error)) {
 
 	var (
 		prevConf       configuration.Spec
@@ -22,15 +22,15 @@ func WatchConfig(ctx context.Context, configLoader configuration_loader.Configur
 	}
 
 	for cfg := range configChan {
-		changed := cfg.TracingSpec != prevConf.TracingSpec
-		validConfig := cfg.TracingSpec.Jaeger.UseAgent || cfg.TracingSpec.Jaeger.CollectorEndpointAddress != ""
+		changed := cfg.Telemetry.CollectorEndpoint != prevConf.Telemetry.CollectorEndpoint || cfg.Telemetry.Tracing != prevConf.Telemetry.Tracing
+		validConfig := cfg.Telemetry.CollectorEndpoint != "" && cfg.Telemetry.Tracing.Propagator != ""
 		if changed {
 			if tracingStopper != nil {
 				//flush prev logs
 				tracingStopper()
 			}
 			if validConfig {
-				tracingStopper, err = tracerFunc(cfg.TracingSpec.Jaeger.CollectorEndpointAddress, cfg.TracingSpec.Jaeger.UseAgent)
+				tracingStopper, err = tracerFunc(cfg.Telemetry.CollectorEndpoint, cfg.Telemetry.Tracing.Propagator)
 				if err != nil {
 					klog.ErrorS(err, "error creating tracer")
 				}

@@ -5,11 +5,10 @@ metadata:
 spec:
   metric:
     enabled: true
-  tracing:
-    samplingRate: '1'
-    jaeger:
-      useAgent: false
-      collectorEndpointAddress: 'linux-ts1858:4317'
+  telemetry:
+    collectorEndpoint: 'linux-ts1858:4317'
+    tracing:
+      propagator: w3c # w3c | b3
 #  subscriberPipeline:
 #    handlers:
 #    - name: pubsub-uppercase

@@ -46,6 +46,8 @@ type HandlerSpec struct {
 
 // Telemetry related configuration.
 type TelemetrySpec struct {
+	// Telemetry collector enpoint address.
+	CollectorEndpoint string `json:"collectorEndpoint"`
 	// Tracing configuration.
 	// +optional
 	Tracing TracingSpec `json:"tracing,omitempty"`

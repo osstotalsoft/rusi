@@ -103,6 +103,9 @@ spec:
               telemetry:
                 description: Telemetry related configuration.
                 properties:
+                  collectorEndpoint:
+                    description: Telemetry collector enpoint address.
+                    type: string
                   tracing:
                     description: Tracing configuration.
                     properties:
@@ -117,6 +120,8 @@ spec:
                     required:
                     - propagator
                     type: object
+                required:
+                - collectorEndpoint
                 type: object
             type: object
         type: object

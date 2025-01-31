@@ -12,7 +12,7 @@ import (
 // LoadDefaultConfiguration returns the default config.
 func LoadDefaultConfiguration() configuration.Spec {
 	return configuration.Spec{
-		TracingSpec: configuration.TracingSpec{},
+		Telemetry: configuration.TelemetrySpec{},
 		PubSubSpec: configuration.PubSubSpec{
 			Name: "",
 		},
