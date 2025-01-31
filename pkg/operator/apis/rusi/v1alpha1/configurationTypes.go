@@ -44,6 +44,7 @@ type HandlerSpec struct {
 	Type string `json:"type"`
 }
 
+// Telemetry related configuration.
 type TelemetrySpec struct {
 	// Tracing configuration.
 	// +optional
