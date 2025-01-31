@@ -10,6 +10,7 @@ import (
 	jaeger_propagator "go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -27,6 +28,8 @@ func SetTracing(serviceName string) func(url string, propagator configuration.Te
 		otel.SetTracerProvider(tp)
 		if propagator == configuration.TelemetryPropagatorJaeger {
 			otel.SetTextMapPropagator(jaeger_propagator.Jaeger{})
+		} else {
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 		}
 
 		return func() {
