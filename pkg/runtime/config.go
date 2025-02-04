@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	defaultGRPCHost        = "localhost"
 	defaultGRPCPort        = 50003
 	defaultDiagnosticsPort = 8080
 	defaultEnableMetrics   = true
@@ -17,6 +18,7 @@ const (
 type ConfigBuilder struct {
 	mode                string
 	rusiGRPCPort        int
+	rusiGRPCHost        string
 	diagnosticsPort     int
 	enableMetrics       bool
 	componentsPath      string
@@ -27,6 +29,7 @@ type ConfigBuilder struct {
 
 type Config struct {
 	Mode                modes.RusiMode
+	RusiGRPCHost        string
 	RusiGRPCPort        int
 	DiagnosticsPort     int
 	EnableMetrics       bool
@@ -46,6 +49,7 @@ func (c *ConfigBuilder) AttachCmdFlags(
 	intVar func(p *int, name string, value int, usage string)) {
 
 	stringVar(&c.mode, "mode", string(modes.StandaloneMode), "Runtime mode for Rusi (kubernetes / standalone - default:standalone )")
+	stringVar(&c.rusiGRPCHost, "rusi-grpc-host", defaultGRPCHost, "gRPC host for the Rusi API to listen on")
 	intVar(&c.rusiGRPCPort, "rusi-grpc-port", defaultGRPCPort, "gRPC port for the Rusi API to listen on")
 	stringVar(&c.componentsPath, "components-path", "", "Path for components directory. If empty, components will not be loaded. Self-hosted mode only")
 	stringVar(&c.config, "config", "", "Path to config file, or name of a configuration object")
@@ -63,6 +67,7 @@ func (c *ConfigBuilder) Build() (Config, error) {
 
 	variables := map[string]string{
 		utils.AppID:        c.appID,
+		utils.RusiGRPCHost: c.rusiGRPCHost,
 		utils.RusiGRPCPort: strconv.Itoa(c.rusiGRPCPort),
 	}
 
@@ -72,6 +77,7 @@ func (c *ConfigBuilder) Build() (Config, error) {
 
 	return Config{
 		Mode:                modes.RusiMode(c.mode),
+		RusiGRPCHost:        c.rusiGRPCHost,
 		RusiGRPCPort:        c.rusiGRPCPort,
 		ComponentsPath:      c.componentsPath,
 		Config:              c.config,

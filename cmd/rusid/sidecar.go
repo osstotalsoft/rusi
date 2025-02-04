@@ -64,7 +64,7 @@ func main() {
 	}
 	klog.InfoS("Components manager is running")
 
-	api := grpc_api.NewGrpcAPI(cfg.RusiGRPCPort)
+	api := grpc_api.NewGrpcAPI(cfg.RusiGRPCHost, cfg.RusiGRPCPort)
 	klog.InfoS("Rusi grpc server is running")
 	rt, err := runtime.NewRuntime(mainCtx, cfg, api, configLoader, compManager)
 	if err != nil {
@@ -72,7 +72,7 @@ func main() {
 		return
 	}
 
-	klog.InfoS("Rusid is started", "port", cfg.RusiGRPCPort,
+	klog.InfoS("Rusid is started", "host", cfg.RusiGRPCHost, "port", cfg.RusiGRPCPort,
 		"app id", cfg.AppID, "mode", cfg.Mode, "version", version.Version(),
 		"git commit", version.Commit(), "git version", version.GitVersion())
 	klog.InfoS("Rusid is using", "config", cfg)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	configuration "rusi/pkg/custom-resource/configuration"
+	"strings"
 	"time"
 
 	jaeger_propagator "go.opentelemetry.io/contrib/propagators/jaeger"
@@ -55,6 +56,8 @@ func flushTracer(tp *tracesdk.TracerProvider) func() {
 
 func getTracerProvider(url string, serviceName string) (*tracesdk.TracerProvider, error) {
 	// Set up a trace exporter
+	url = strings.TrimPrefix(url, "http://")
+
 	traceExporter, err := otlptracegrpc.New(context.Background(),
 		otlptracegrpc.WithEndpoint(url),
 		otlptracegrpc.WithInsecure())

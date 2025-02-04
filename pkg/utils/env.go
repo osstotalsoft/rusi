@@ -3,6 +3,8 @@ package utils
 const (
 	// RusiGRPCPort is the rusi api grpc port.
 	RusiGRPCPort string = "RUSI_GRPC_PORT"
+	// RusiGRPCHost is the rusi api grpc host.
+	RusiGRPCHost string = "RUSI_GRPC_HOST"
 	// RusiMetricsPort is the rusi metrics port.
 	RusiMetricsPort string = "RUSI_METRICS_PORT"
 	// RusiProfilePort is the rusi performance profiling port.
