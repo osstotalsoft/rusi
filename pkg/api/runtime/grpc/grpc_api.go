@@ -205,6 +205,7 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer,
 			}()
 
 			//send message to GRPC
+
 			data, err := serdes.Marshal(env.Payload)
 			if err != nil {
 				return err
@@ -223,11 +224,13 @@ func (srv *rusiServerImpl) buildSubscribeHandler(stream v1.Rusi_SubscribeServer,
 			//handler builder closed context
 			case <-buildCtx.Done():
 				klog.V(4).InfoS("Context done before ack", "message", buildCtx.Err(), "topic", env.Subject)
-				return buildCtx.Err()
+				return errors.Join(messaging.ErrMessageNotAcknowledged, buildCtx.Err())
+
 			//subscriber context is done
 			case <-ctx.Done():
 				klog.V(4).InfoS("Context done before ack", "message", ctx.Err(), "topic", env.Subject)
-				return ctx.Err()
+				return errors.Join(messaging.ErrMessageNotAcknowledged, ctx.Err())
+
 			case err = <-ackChan:
 				klog.V(4).InfoS("Ack sent to pubsub", "topic", env.Subject, "Id", env.Id, "error", err)
 				return err
@@ -256,7 +259,7 @@ func startAckReceiverForStream(subAckMap map[string]*subAck, mu *sync.RWMutex, s
 				break
 			}
 			if ar.GetError() != "" {
-				err = errors.New(ar.GetError())
+				err = errors.Join(errors.New(ar.GetError()), messaging.ErrMessageAcknowledgedWithError)
 			}
 
 			mu.RLock()

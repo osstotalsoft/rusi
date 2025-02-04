@@ -92,7 +92,7 @@ func SubscriberTracingMiddleware() messaging.Middleware {
 				span.SetStatus(codes.Ok, "")
 			} else {
 				span.SetStatus(codes.Error, fmt.Sprintf("%v", err))
-				span.RecordError(err, trace.WithStackTrace(true))
+				span.RecordError(err)
 			}
 
 			return err

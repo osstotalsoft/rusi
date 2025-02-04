@@ -1,7 +1,7 @@
 package pubsub
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/messaging"
 	"strings"
@@ -52,7 +52,7 @@ func (p *pubSubRegistry) Create(name, version string) (messaging.PubSub, error) 
 	if method, ok := p.getPubSub(name, version); ok {
 		return method(), nil
 	}
-	return nil, errors.Errorf("couldn't find message bus %s/%s", name, version)
+	return nil, fmt.Errorf("couldn't find message bus %s/%s", name, version)
 }
 
 func (p *pubSubRegistry) getPubSub(name, version string) (func() messaging.PubSub, bool) {
