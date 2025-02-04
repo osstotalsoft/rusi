@@ -4,10 +4,12 @@ import (
 	"rusi/pkg/custom-resource/components"
 	rusiv1 "rusi/pkg/operator/apis/rusi/v1alpha1"
 	operatorv1 "rusi/pkg/proto/operator/v1"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -70,11 +72,20 @@ func convertToComponent(item rusiv1.Component) components.Spec {
 func convertMetadataItemsToProperties(items []rusiv1.MetadataItem) map[string]string {
 	properties := map[string]string{}
 	for _, c := range items {
-		val := c.Value.String()
+		val := JsonToUnquotedString(c.Value)
 		for strings.Contains(val, "{uuid}") {
 			val = strings.Replace(val, "{uuid}", uuid.New().String(), 1)
 		}
 		properties[c.Name] = val
 	}
 	return properties
+}
+
+func JsonToUnquotedString(json apiextensionsv1.JSON) string {
+	s := string(json.Raw)
+	c, err := strconv.Unquote(s)
+	if err == nil {
+		s = c
+	}
+	return s
 }
