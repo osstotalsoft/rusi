@@ -62,19 +62,3 @@ type ComponentList struct {
 
 	Items []Component `json:"items"`
 }
-
-// // DynamicValue is a dynamic value struct for the component.metadata pair value.
-// type DynamicValue struct {
-// 	apiextensionsv1.JSON `json:",inline"`
-// }
-
-// // String returns the string representation of the raw value.
-// // If the value is a string, it will be unquoted as the string is guaranteed to be a JSON serialized string.
-// func (d *DynamicValue) String() string {
-// 	s := string(d.Raw)
-// 	c, err := strconv.Unquote(s)
-// 	if err == nil {
-// 		s = c
-// 	}
-// 	return s
-// }
