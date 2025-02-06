@@ -5,15 +5,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
-	"k8s.io/klog/v2"
+	"os"
 	"path/filepath"
 	"rusi/pkg/custom-resource/components"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -85,6 +87,9 @@ func loadComponentsFromFile(path string) ([]components.Spec, error) {
 		klog.Errorf("load components error when reading file %s : %s", path, err)
 		return comps, err
 	}
+
+	b = []byte(os.ExpandEnv(string(b)))
+
 	comps, errs = decodeYaml(b)
 	for _, err := range errs {
 		errStr := fmt.Sprintf("load components error when parsing components yaml resource in %s : %s", path, err)
