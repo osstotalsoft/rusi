@@ -40,25 +40,21 @@ func Test_parseMetadata(t *testing.T) {
 		{
 			"missing events stream",
 			map[string]string{
-				natsURL:        "nats://foo.bar:4222",
-				consumerID:     "consumerID",
-				commandsStream: "commandsStream",
+				natsURL:    "nats://foo.bar:4222",
+				consumerID: "consumerID",
 			},
 			options{natsURL: "nats://foo.bar:4222", connectWait: nats.DefaultTimeout,
-				durableSubscriptionName: "consumerID", commandsStream: "commandsStream"},
+				durableSubscriptionName: "consumerID"},
 			true,
 		},
 		{
 			"should parse ok",
 			map[string]string{
-				natsURL:        "nats://foo.bar:4222",
-				consumerID:     "consumerID",
-				commandsStream: "commandsStream",
-				eventsStream:   "eventsStream",
+				natsURL:    "nats://foo.bar:4222",
+				consumerID: "consumerID",
 			},
 			options{natsURL: "nats://foo.bar:4222", connectWait: nats.DefaultTimeout,
-				durableSubscriptionName: "consumerID", commandsStream: "commandsStream",
-				eventsStream: "eventsStream"},
+				durableSubscriptionName: "consumerID"},
 			false,
 		},
 	}

@@ -1,8 +1,6 @@
 module rusi
 
-go 1.23.0
-
-toolchain go1.23.5
+go 1.23.5
 
 //https://github.com/golang/go/wiki/Modules#how-to-upgrade-and-downgrade-dependencies
 
