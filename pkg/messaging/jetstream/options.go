@@ -10,6 +10,4 @@ type options struct {
 	connectWait             time.Duration
 	ackWaitTime             time.Duration
 	maxInFlight             int
-	eventsStream            string
-	commandsStream          string
 }
