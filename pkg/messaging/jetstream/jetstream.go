@@ -10,6 +10,7 @@ import (
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	"strconv"
+	"strings"
 	"time"
 
 	"k8s.io/klog/v2"
@@ -169,7 +170,7 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 	cc := jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy}
 	cc.InactiveThreshold = time.Hour
 	if mergedOptions.durableSubscriptionName != "" {
-		cc.Durable = mergedOptions.durableSubscriptionName + "__" + topic
+		cc.Durable = mergedOptions.durableSubscriptionName + "__" + strings.ReplaceAll(topic, ".", "_")
 	}
 	// check if set the ack options.
 	if mergedOptions.ackWaitTime > (1 * time.Nanosecond) {

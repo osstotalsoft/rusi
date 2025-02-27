@@ -7,7 +7,7 @@ spec:
   version: v1
   metadata:
     - name: natsURL
-      value: "nats://kube-worker1:31552"
+      value: "nats://linux-ts1858:4222"
     - name: connectWait
       value: 10s
     - name: ackWaitTime
