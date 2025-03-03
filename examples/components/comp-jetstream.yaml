@@ -7,14 +7,10 @@ spec:
   version: v1
   metadata:
     - name: natsURL
-      value: "nats://kube-worker1:31552"
+      value: "nats://linux-ts1858:4222"
     - name: connectWait
       value: 10s
     - name: ackWaitTime
       value: 50s
     - name: maxInFlight
       value: '1'
-    - name: commandsStream
-      value: "commands_stream"
-    - name: eventsStream
-      value: "events_stream"

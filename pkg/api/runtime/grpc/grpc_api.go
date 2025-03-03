@@ -146,6 +146,7 @@ func (srv *rusiServerImpl) Subscribe(stream v1.Rusi_SubscribeServer) error {
 		})
 		if err != nil {
 			hCancel()
+			klog.Error(err)
 			return err
 		}
 

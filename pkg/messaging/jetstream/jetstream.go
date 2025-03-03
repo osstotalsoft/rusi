@@ -23,13 +23,11 @@ const (
 
 // subscription options (optional)
 const (
-	deliverAll     = "deliverAll"
-	deliverNew     = "deliverNew"
-	ackWaitTime    = "ackWaitTime"
-	maxInFlight    = "maxInFlight"
-	connectWait    = "connectWait"
-	commandsStream = "commandsStream"
-	eventsStream   = "eventsStream"
+	deliverAll  = "deliverAll"
+	deliverNew  = "deliverNew"
+	ackWaitTime = "ackWaitTime"
+	maxInFlight = "maxInFlight"
+	connectWait = "connectWait"
 )
 
 // valid values for subscription options
@@ -75,14 +73,14 @@ func parseMetadata(properties map[string]string) (options, error) {
 	if val, ok := properties[ackWaitTime]; ok && val != "" {
 		dur, err := time.ParseDuration(properties[ackWaitTime])
 		if err != nil {
-			return m, fmt.Errorf("jetStream error %s ", err)
+			return m, fmt.Errorf("jetStream error %w ", err)
 		}
 		m.ackWaitTime = dur
 	}
 	if val, ok := properties[maxInFlight]; ok && val != "" {
 		maxInFlight, err := strconv.ParseInt(properties[maxInFlight], 10, 32)
 		if err != nil {
-			return m, fmt.Errorf("jetStream error in parsemetadata for maxInFlight: %s ", err)
+			return m, fmt.Errorf("jetStream error in parsemetadata for maxInFlight: %w ", err)
 		}
 		if maxInFlight < 1 {
 			return m, errors.New("jetStream error: maxInFlight should be equal to or more than 1")
@@ -93,21 +91,9 @@ func parseMetadata(properties map[string]string) (options, error) {
 	if val, ok := properties[connectWait]; ok && val != "" {
 		wait, err := time.ParseDuration(properties[connectWait])
 		if err != nil {
-			return m, fmt.Errorf("jetStream error %s ", err)
+			return m, fmt.Errorf("jetStream error %w", err)
 		}
 		m.connectWait = wait
-	}
-
-	if val, ok := properties[commandsStream]; ok && val != "" {
-		m.commandsStream = val
-	} else {
-		return m, errors.New("jetStream error: missing commandsStream")
-	}
-
-	if val, ok := properties[eventsStream]; ok && val != "" {
-		m.eventsStream = val
-	} else {
-		return m, errors.New("jetStream error: missing eventsStream")
 	}
 
 	//nolint:nestif
@@ -127,7 +113,6 @@ func parseMetadata(properties map[string]string) (options, error) {
 			return m, errors.New("jetStream error: valid value for deliverNew is true")
 		}
 	}
-
 	return m, nil
 }
 
@@ -140,7 +125,7 @@ func (n *jetStreamPubSub) Init(properties map[string]string) error {
 
 	n.natsConn, err = nats.Connect(m.natsURL, nats.Timeout(n.options.connectWait))
 	if err != nil {
-		return fmt.Errorf("jetStream: error connecting to nats server %s: %s", m.natsURL, err)
+		return fmt.Errorf("jetStream: error connecting to nats server %s: %w", m.natsURL, err)
 	}
 	klog.Infof("connected to jetStream at %s", m.natsURL)
 
@@ -169,7 +154,7 @@ func (n *jetStreamPubSub) Publish(topic string, msg *messaging.MessageEnvelope) 
 
 	err = n.natsConn.Publish(topic, msgBytes)
 	if err != nil {
-		return fmt.Errorf("jetStream: error from publish: %s", err)
+		return fmt.Errorf("jetStream: error from publish: %w", err)
 	}
 	klog.V(4).InfoS("Published message to JetStream", "topic", topic, "message", *msg)
 	return nil
@@ -178,20 +163,22 @@ func (n *jetStreamPubSub) Publish(topic string, msg *messaging.MessageEnvelope) 
 func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, options *messaging.SubscriptionOptions) (messaging.CloseFunc, error) {
 	mergedOptions, err := mergeGlobalAndSubscriptionOptions(n.options, options)
 	if err != nil {
-		return nil, fmt.Errorf("jetStream: error getting subscription options %s", err)
+		return nil, fmt.Errorf("jetStream: error getting subscription options %w", err)
 	}
 
 	js, _ := jetstream.New(n.natsConn)
 	cc := jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy}
+	cc.InactiveThreshold = time.Hour
 	if mergedOptions.durableSubscriptionName != "" {
-		cc.Durable = mergedOptions.durableSubscriptionName
+		cc.Durable = mergedOptions.durableSubscriptionName + "__" + strings.ReplaceAll(topic, ".", "_")
 	}
 	// check if set the ack options.
 	if mergedOptions.ackWaitTime > (1 * time.Nanosecond) {
 		cc.AckWait = mergedOptions.ackWaitTime
 	}
+	maxInFlight := 1
 	if mergedOptions.maxInFlight >= 1 {
-		cc.MaxAckPending = mergedOptions.maxInFlight
+		maxInFlight = mergedOptions.maxInFlight
 	}
 	cc.FilterSubject = topic
 
@@ -219,24 +206,23 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 		}()
 	}
 
-	isCommand := strings.Contains(strings.ToLower(topic), "commands.")
-	stream := mergedOptions.eventsStream
-	if isCommand {
-		stream = mergedOptions.commandsStream
+	stream, err := js.StreamNameBySubject(n.ctx, topic)
+	if err != nil {
+		return nil, fmt.Errorf("jetStream: cannot find stream for topic %s: %w", topic, err)
 	}
 	consumer, err := js.CreateOrUpdateConsumer(n.ctx, stream, cc)
-	subs, err := consumer.Consume(natsMsgHandler)
-
+	if err != nil {
+		klog.ErrorS(err, "jetStream: CreateOrUpdateConsumer error", "topic", topic)
+		return nil, err
+	}
+	subs, err := consumer.Consume(natsMsgHandler, jetstream.PullMaxMessages(maxInFlight))
 	if err != nil {
 		klog.ErrorS(err, "jetStream: subscribe error", "topic", topic)
 	}
-
 	if err != nil || subs == nil {
-		return nil, fmt.Errorf("jetStream: subscribe error %s", err)
+		return nil, fmt.Errorf("jetStream: subscribe error %w", err)
 	}
-
 	logSubscribe(cc, topic)
-
 	return func() error {
 		klog.Infof("jetStream: unsubscribed from topic %s", topic)
 		subs.Stop()
