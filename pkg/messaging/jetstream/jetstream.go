@@ -170,7 +170,7 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 	cc := jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy}
 	cc.InactiveThreshold = time.Hour
 	if mergedOptions.durableSubscriptionName != "" {
-		cc.Durable = mergedOptions.durableSubscriptionName + "__" + strings.ReplaceAll(topic, ".", "_")
+		cc.Durable = strings.ReplaceAll(mergedOptions.durableSubscriptionName+"__"+topic, ".", "_")
 	}
 	// check if set the ack options.
 	if mergedOptions.ackWaitTime > (1 * time.Nanosecond) {
@@ -258,7 +258,6 @@ func mergeGlobalAndSubscriptionOptions(globalOptions options, subscriptionOption
 	}
 
 	mergedOptions := globalOptions
-
 	if subscriptionOptions.Durable != nil && *subscriptionOptions.Durable {
 		if mergedOptions.durableSubscriptionName == "" {
 			return mergedOptions, errors.New("jetStream error: missing durable subscription name")
