@@ -227,17 +227,20 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 	go func() {
 		for {
 			select {
+			//wait for the semaphore to be available
 			case sem <- struct{}{}:
 				go func() {
-					defer func() {
-						<-sem
-					}()
+					defer func() { <-sem }() //reset from semaphore when done
 					msg, err := iterator.Next()
 					if err != nil {
 						if !errors.Is(err, jetstream.ErrMsgIteratorClosed) {
 							klog.ErrorS(err, "jetStream: consumer pulling error", "topic", topic)
 						}
-						close(done)
+						select {
+						case <-done: // Channel is already closed, do nothing
+						default:
+							close(done) // close channel to exit loop
+						}
 					} else {
 						natsMsgHandler(msg)
 					}
