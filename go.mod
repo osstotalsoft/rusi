@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/nats-io/nats-server/v2 v2.10.25
 	github.com/nats-io/nats.go v1.39.1
 	github.com/nats-io/stan.go v0.10.4
 	github.com/pkg/errors v0.9.1
@@ -54,10 +55,11 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
+	github.com/minio/highwayhash v1.0.3 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nats-io/nats-server/v2 v2.10.25 // indirect
+	github.com/nats-io/jwt/v2 v2.7.3 // indirect
 	github.com/nats-io/nats-streaming-server v0.25.6 // indirect
 	github.com/nats-io/nkeys v0.4.10 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
@@ -70,8 +72,8 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
-	golang.org/x/crypto v0.34.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/oauth2 v0.26.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect

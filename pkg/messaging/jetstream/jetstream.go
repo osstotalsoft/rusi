@@ -193,17 +193,14 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 		}
 		klog.InfoS("Received message", "topic", natsMsg.Subject(), "Id", msg.Id)
 
-		//run handler concurrently
-		go func() {
-			err = handler(n.ctx, &msg)
-			if err == nil {
-				// we only send a successful ACK if there is no error
-				_ = natsMsg.Ack()
-				klog.V(4).InfoS("Manual ack", "topic", natsMsg.Subject(), "Id", msg.Id)
-			} else {
-				klog.ErrorS(err, "Error running subscriber pipeline, message was not ACK", "topic", natsMsg.Subject())
-			}
-		}()
+		err = handler(n.ctx, &msg)
+		if err == nil {
+			// we only send a successful ACK if there is no error
+			_ = natsMsg.Ack()
+			klog.V(4).InfoS("Manual ack", "topic", natsMsg.Subject(), "Id", msg.Id)
+		} else {
+			klog.ErrorS(err, "Error running subscriber pipeline, message was not ACK", "topic", natsMsg.Subject())
+		}
 	}
 
 	stream, err := js.StreamNameBySubject(n.ctx, topic)
@@ -215,17 +212,44 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 		klog.ErrorS(err, "jetStream: CreateOrUpdateConsumer error", "topic", topic)
 		return nil, err
 	}
-	subs, err := consumer.Consume(natsMsgHandler, jetstream.PullMaxMessages(maxInFlight))
+
+	//https://github.com/nats-io/nats.go/blob/main/jetstream/README.md#using-messages-to-fetch-single-messages-one-by-one
+	iterator, err := consumer.Messages(jetstream.PullMaxMessages(1))
 	if err != nil {
 		klog.ErrorS(err, "jetStream: subscribe error", "topic", topic)
 	}
-	if err != nil || subs == nil {
+	if err != nil || iterator == nil {
 		return nil, fmt.Errorf("jetStream: subscribe error %w", err)
 	}
 	logSubscribe(cc, topic)
+	sem := make(chan struct{}, maxInFlight)
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case sem <- struct{}{}:
+				go func() {
+					defer func() {
+						<-sem
+					}()
+					msg, err := iterator.Next()
+					if err != nil {
+						if !errors.Is(err, jetstream.ErrMsgIteratorClosed) {
+							klog.ErrorS(err, "jetStream: consumer pulling error", "topic", topic)
+						}
+						close(done)
+					} else {
+						natsMsgHandler(msg)
+					}
+				}()
+			case <-done:
+				return
+			}
+		}
+	}()
 	return func() error {
 		klog.Infof("jetStream: unsubscribed from topic %s", topic)
-		subs.Stop()
+		iterator.Stop()
 		return nil
 	}, nil
 }
