@@ -127,3 +127,6 @@ spec:
       nodeSelector:
 {{ toYaml .Values.global.nodeSelector | indent 8 }}
 {{- end }}
+{{- if .Values.webhookHostNetwork }}
+      hostNetwork: true
+{{- end }}
