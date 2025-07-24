@@ -11,6 +11,7 @@ injectorImage:
   name: ""
 
 webhookFailurePolicy: Ignore
+webhookHostNetwork: false
 sidecarImagePullPolicy: IfNotPresent
 runAsNonRoot: true
 resources: {}
