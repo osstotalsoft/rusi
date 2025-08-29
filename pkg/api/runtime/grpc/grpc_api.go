@@ -310,7 +310,7 @@ func (srv *rusiServerImpl) Publish(ctx context.Context, request *v1.PublishReque
 
 	if err != nil {
 		klog.ErrorS(err, "error on publishing")
-		err = status.Errorf(codes.Unknown, err.Error())
+		err = status.Error(codes.Unknown, err.Error())
 	}
 	return &emptypb.Empty{}, err
 }
