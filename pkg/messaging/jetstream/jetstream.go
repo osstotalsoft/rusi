@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 	"rusi/pkg/healthcheck"
 	"rusi/pkg/messaging"
 	"rusi/pkg/messaging/serdes"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 
 	"k8s.io/klog/v2"
 )
@@ -214,7 +215,7 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 	}
 
 	//https://github.com/nats-io/nats.go/blob/main/jetstream/README.md#using-messages-to-fetch-single-messages-one-by-one
-	iterator, err := consumer.Messages(jetstream.PullMaxMessages(1))
+	iterator, err := consumer.Messages(jetstream.PullMaxMessages(1), jetstream.WithMessagesErrOnMissingHeartbeat(false))
 	if err != nil {
 		klog.ErrorS(err, "jetStream: subscribe error", "topic", topic)
 	}
@@ -234,7 +235,8 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 					msg, err := iterator.Next()
 					if err != nil {
 						if !errors.Is(err, jetstream.ErrMsgIteratorClosed) {
-							klog.ErrorS(err, "jetStream: consumer pulling error", "topic", topic)
+							klog.ErrorS(err, "jetStream: consumer pulling error - closing connection", "topic", topic)
+							n.natsConn.Close() // closing connection, waiting for restart
 						}
 						select {
 						case <-done: // Channel is already closed, do nothing
