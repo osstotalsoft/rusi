@@ -91,6 +91,8 @@ spec:
           value: "{{ .Values.sidecarImagePullPolicy }}"
         - name: SIDECAR_IMAGE_PULL_SECRETS
           value: "{{ .Values.global.imagePullSecrets }}"
+        - name: INJECT_AS_INIT_CONTAINER
+          value: "{{ .Values.injectAsInitContainer }}"
         - name: NAMESPACE
           valueFrom:
             fieldRef:
