@@ -122,6 +122,12 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 	var path string
 	var value interface{}
 
+	// Add environment variables to application containers so they can communicate with the sidecar
+	// This is needed regardless of whether the sidecar is injected as init container or regular container
+	if len(pod.Spec.Containers) > 0 {
+		envPatchOps = addRusiEnvVarsToContainers(pod.Spec.Containers)
+	}
+
 	if i.config.InjectAsInitContainer {
 		// Inject as init container
 		if len(pod.Spec.InitContainers) == 0 {
@@ -137,7 +143,6 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 			path = containersPath
 			value = []corev1.Container{*sidecarContainer}
 		} else {
-			envPatchOps = addRusiEnvVarsToContainers(pod.Spec.Containers)
 			path = "/spec/containers/-"
 			value = sidecarContainer
 		}
