@@ -43,6 +43,7 @@ const (
 	rusiReadinessProbeThresholdKey = "rusi.io/sidecar-readiness-probe-threshold"
 
 	containersPath                = "/spec/containers"
+	initContainersPath            = "/spec/initContainers"
 	sidecarAPIGRPCPort            = 50003
 	userContainerRusiGRPCPortName = "RUSI_GRPC_PORT"
 	sidecarGRPCPortName           = "rusi-grpc"
@@ -111,7 +112,7 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 
 	tokenMount := getTokenVolumeMount(pod)
 	sidecarContainer, err := getSidecarContainer(pod.Annotations, id, image, imagePullPolicy, req.Namespace,
-		apiSvcAddress, tokenMount)
+		apiSvcAddress, tokenMount, i.config.InjectAsInitContainer)
 	if err != nil {
 		return nil, err
 	}
@@ -120,13 +121,31 @@ func (i *injector) getPodPatchOperations(ar *v1.AdmissionReview,
 	envPatchOps := []PatchOperation{}
 	var path string
 	var value interface{}
-	if len(pod.Spec.Containers) == 0 {
-		path = containersPath
-		value = []corev1.Container{*sidecarContainer}
-	} else {
+
+	// Add environment variables to application containers so they can communicate with the sidecar
+	// This is needed regardless of whether the sidecar is injected as init container or regular container
+	if len(pod.Spec.Containers) > 0 {
 		envPatchOps = addRusiEnvVarsToContainers(pod.Spec.Containers)
-		path = "/spec/containers/-"
-		value = sidecarContainer
+	}
+
+	if i.config.InjectAsInitContainer {
+		// Inject as init container
+		if len(pod.Spec.InitContainers) == 0 {
+			path = initContainersPath
+			value = []corev1.Container{*sidecarContainer}
+		} else {
+			path = "/spec/initContainers/-"
+			value = sidecarContainer
+		}
+	} else {
+		// Inject as regular container (existing behavior)
+		if len(pod.Spec.Containers) == 0 {
+			path = containersPath
+			value = []corev1.Container{*sidecarContainer}
+		} else {
+			path = "/spec/containers/-"
+			value = sidecarContainer
+		}
 	}
 
 	patchOps = append(
@@ -216,6 +235,11 @@ func getTokenVolumeMount(pod corev1.Pod) *corev1.VolumeMount {
 
 func podContainsSidecarContainer(pod *corev1.Pod) bool {
 	for _, c := range pod.Spec.Containers {
+		if c.Name == sidecarContainerName {
+			return true
+		}
+	}
+	for _, c := range pod.Spec.InitContainers {
 		if c.Name == sidecarContainerName {
 			return true
 		}
@@ -372,7 +396,7 @@ func getPullPolicy(pullPolicy string) corev1.PullPolicy {
 }
 
 func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, imagePullPolicy,
-	namespace, controlPlaneAddress string, tokenVolumeMount *corev1.VolumeMount) (*corev1.Container, error) {
+	namespace, controlPlaneAddress string, tokenVolumeMount *corev1.VolumeMount, injectAsInitContainer bool) (*corev1.Container, error) {
 
 	metricsEnabled := getEnableMetrics(annotations)
 	pullPolicy := getPullPolicy(imagePullPolicy)
@@ -456,6 +480,13 @@ func getSidecarContainer(annotations map[string]string, id, rusiSidecarImage, im
 			FailureThreshold:    getInt32AnnotationOrDefault(annotations, rusiLivenessProbeThresholdKey, defaultHealthzProbeThreshold),
 		},
 	}
+
+	// If injecting as init container, set the restart policy to Always
+	if injectAsInitContainer {
+		restartPolicy := corev1.ContainerRestartPolicyAlways
+		c.RestartPolicy = &restartPolicy
+	}
+
 	c.Env = append(c.Env, utils.ParseEnvString(annotations[rusiEnvKey])...)
 	if tokenVolumeMount != nil {
 		c.VolumeMounts = []corev1.VolumeMount{

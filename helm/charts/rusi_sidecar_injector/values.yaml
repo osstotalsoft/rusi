@@ -17,6 +17,10 @@ runAsNonRoot: true
 resources: {}
 kubeClusterDomain: cluster.local
 
+# If true, inject rusi sidecar as an init container with restart policy set to Always
+# If false, inject as a regular sidecar container (default behavior)
+injectAsInitContainer: false
+
 debug:
   enabled: false
   port: 40000

@@ -16,6 +16,7 @@ type Config struct {
 	Namespace              string `envconfig:"NAMESPACE" required:"true"`
 	KubeClusterDomain      string `envconfig:"KUBE_CLUSTER_DOMAIN"`
 	ValidateServiceAccount bool
+	InjectAsInitContainer  bool `envconfig:"INJECT_AS_INIT_CONTAINER"`
 }
 
 // NewConfigWithDefaults returns a Config object with default values already
@@ -25,6 +26,7 @@ func NewConfigWithDefaults() Config {
 	return Config{
 		SidecarImagePullPolicy: "Always",
 		ValidateServiceAccount: true,
+		InjectAsInitContainer:  false,
 	}
 }
 
