@@ -52,8 +52,8 @@ func GetComponentsWatcher(ctx context.Context, address string, wg *sync.WaitGrou
 		if err != nil {
 			return nil, err
 		}
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			defer close(c)
 			for {
@@ -97,8 +97,8 @@ func GetConfigurationWatcher(ctx context.Context, address, configName string, wg
 		if err != nil {
 			return nil, err
 		}
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			defer close(c)
 			for {

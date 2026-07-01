@@ -483,7 +483,7 @@ func startServer(t *testing.T, ctx context.Context, publishHandler messaging.Pub
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
-			t.Fatalf("Server exited with error: %v", err)
+			t.Errorf("Server exited with error: %v", err)
 		}
 	}()
 	return server
