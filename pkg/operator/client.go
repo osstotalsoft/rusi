@@ -40,6 +40,9 @@ func GetComponentsWatcher(ctx context.Context, address string, wg *sync.WaitGrou
 	client, err := newClient(ctx, address)
 	if err != nil {
 		klog.ErrorS(err, "error creating grpc operator client")
+		return func(context.Context) (<-chan components.Spec, error) {
+			return nil, err
+		}
 	}
 	return func(ctx context.Context) (<-chan components.Spec, error) {
 		c := make(chan components.Spec)
@@ -88,6 +91,9 @@ func GetConfigurationWatcher(ctx context.Context, address, configName string, wg
 	client, err := newClient(ctx, address)
 	if err != nil {
 		klog.ErrorS(err, "error creating grpc operator client")
+		return func(context.Context) (<-chan configuration.Spec, error) {
+			return nil, err
+		}
 	}
 	return func(ctx context.Context) (<-chan configuration.Spec, error) {
 		c := make(chan configuration.Spec)
