@@ -83,16 +83,19 @@ func GetComponentsWatcher(ctx context.Context, address string, wg *sync.WaitGrou
 						c <- spec
 					}
 					klog.Warning("watch components grpc stream closed, reconnecting...")
-					newStream, err := client.WatchComponents(ctx, req)
-					if err != nil {
+					// retry until a valid stream is obtained, so Recv never runs on the dead one
+					for ctx.Err() == nil {
+						newStream, err := client.WatchComponents(ctx, req)
+						if err == nil {
+							stream = newStream
+							break
+						}
 						klog.ErrorS(err, "error reconnecting watch components grpc stream")
 						select {
 						case <-ctx.Done():
 						case <-time.After(time.Second):
 						}
-						continue
 					}
-					stream = newStream
 				}
 			}
 		}()
@@ -143,16 +146,19 @@ func GetConfigurationWatcher(ctx context.Context, address, configName string, wg
 						c <- spec
 					}
 					klog.Warning("watch configuration grpc stream closed, reconnecting ...")
-					newStream, err := client.WatchConfiguration(ctx, req)
-					if err != nil {
+					// retry until a valid stream is obtained, so Recv never runs on the dead one
+					for ctx.Err() == nil {
+						newStream, err := client.WatchConfiguration(ctx, req)
+						if err == nil {
+							stream = newStream
+							break
+						}
 						klog.ErrorS(err, "error reconnecting watch configuration grpc stream")
 						select {
 						case <-ctx.Done():
 						case <-time.After(time.Second):
 						}
-						continue
 					}
-					stream = newStream
 				}
 			}
 		}()
