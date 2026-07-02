@@ -11,6 +11,7 @@ import (
 	"rusi/pkg/custom-resource/configuration"
 	operatorv1 "rusi/pkg/proto/operator/v1"
 	"sync"
+	"time"
 )
 
 func newClient(ctx context.Context, address string) (operatorv1.RusiOperatorClient, error) {
@@ -82,7 +83,16 @@ func GetComponentsWatcher(ctx context.Context, address string, wg *sync.WaitGrou
 						c <- spec
 					}
 					klog.Warning("watch components grpc stream closed, reconnecting...")
-					stream, _ = client.WatchComponents(ctx, req)
+					newStream, err := client.WatchComponents(ctx, req)
+					if err != nil {
+						klog.ErrorS(err, "error reconnecting watch components grpc stream")
+						select {
+						case <-ctx.Done():
+						case <-time.After(time.Second):
+						}
+						continue
+					}
+					stream = newStream
 				}
 			}
 		}()
@@ -133,7 +143,16 @@ func GetConfigurationWatcher(ctx context.Context, address, configName string, wg
 						c <- spec
 					}
 					klog.Warning("watch configuration grpc stream closed, reconnecting ...")
-					stream, _ = client.WatchConfiguration(ctx, req)
+					newStream, err := client.WatchConfiguration(ctx, req)
+					if err != nil {
+						klog.ErrorS(err, "error reconnecting watch configuration grpc stream")
+						select {
+						case <-ctx.Done():
+						case <-time.After(time.Second):
+						}
+						continue
+					}
+					stream = newStream
 				}
 			}
 		}()
