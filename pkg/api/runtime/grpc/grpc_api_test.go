@@ -481,11 +481,16 @@ func startServer(t *testing.T, ctx context.Context, publishHandler messaging.Pub
 	grpcServer := grpc.NewServer()
 	v1.RegisterRusiServer(grpcServer, server)
 
+	serveErr := make(chan error, 1)
 	go func() {
-		if err := grpcServer.Serve(lis); err != nil {
+		serveErr <- grpcServer.Serve(lis)
+	}()
+	t.Cleanup(func() {
+		grpcServer.Stop()
+		if err := <-serveErr; err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			t.Errorf("Server exited with error: %v", err)
 		}
-	}()
+	})
 	return server
 }
 func bufDialer(context.Context, string) (net.Conn, error) {
