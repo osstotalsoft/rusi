@@ -19,6 +19,7 @@ func WatchConfig(ctx context.Context, configLoader configuration_loader.Configur
 	configChan, err := configLoader(ctx)
 	if err != nil {
 		klog.ErrorS(err, "error loading application config")
+		return
 	}
 
 	for cfg := range configChan {
