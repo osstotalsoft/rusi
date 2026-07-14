@@ -1,6 +1,6 @@
 module rusi
 
-go 1.26.4
+go 1.26.5
 
 //https://github.com/golang/go/wiki/Modules#how-to-upgrade-and-downgrade-dependencies
 
