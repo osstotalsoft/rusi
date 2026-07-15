@@ -2,6 +2,9 @@ package grpc
 
 import (
 	"context"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 	"net"
 	"reflect"
 	"rusi/pkg/messaging"
@@ -9,10 +12,6 @@ import (
 	v1 "rusi/pkg/proto/runtime/v1"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"

@@ -2,17 +2,15 @@ package operator
 
 import (
 	"context"
+	jsoniter "github.com/json-iterator/go"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"k8s.io/klog/v2"
 	"rusi/internal/kube"
 	"rusi/pkg/custom-resource/components"
 	"rusi/pkg/custom-resource/configuration"
 	operatorv1 "rusi/pkg/proto/operator/v1"
 	"sync"
-	"time"
-
-	jsoniter "github.com/json-iterator/go"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"k8s.io/klog/v2"
 )
 
 func newClient(ctx context.Context, address string) (operatorv1.RusiOperatorClient, error) {
@@ -54,8 +52,8 @@ func GetComponentsWatcher(ctx context.Context, address string, wg *sync.WaitGrou
 		if err != nil {
 			return nil, err
 		}
-		wg.Add(1)
 		go func() {
+			wg.Add(1)
 			defer wg.Done()
 			defer close(c)
 			for {
@@ -90,12 +88,6 @@ func GetConfigurationWatcher(ctx context.Context, address, configName string, wg
 	client, err := newClient(ctx, address)
 	if err != nil {
 		klog.ErrorS(err, "error creating grpc operator client")
-		return func(context.Context) (<-chan configuration.Spec, error) {
-			// return a closed channel so callers that ignore err don't block ranging a nil channel
-			c := make(chan configuration.Spec)
-			close(c)
-			return c, err
-		}
 	}
 	return func(ctx context.Context) (<-chan configuration.Spec, error) {
 		c := make(chan configuration.Spec)
@@ -129,19 +121,7 @@ func GetConfigurationWatcher(ctx context.Context, address, configName string, wg
 						c <- spec
 					}
 					klog.Warning("watch configuration grpc stream closed, reconnecting ...")
-					// retry until a valid stream is obtained, so Recv never runs on the dead one
-					for ctx.Err() == nil {
-						newStream, err := client.WatchConfiguration(ctx, req)
-						if err == nil {
-							stream = newStream
-							break
-						}
-						klog.ErrorS(err, "error reconnecting watch configuration grpc stream")
-						select {
-						case <-ctx.Done():
-						case <-time.After(time.Second):
-						}
-					}
+					stream, _ = client.WatchConfiguration(ctx, req)
 				}
 			}
 		}()
