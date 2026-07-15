@@ -1,4 +1,4 @@
-FROM alpine:latest as alpine
+FROM alpine:latest AS alpine
 RUN apk add -U --no-cache ca-certificates
 # current directory must be ./dist
 
