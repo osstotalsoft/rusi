@@ -2,9 +2,6 @@ package grpc
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 	"net"
 	"reflect"
 	"rusi/pkg/messaging"
@@ -12,6 +9,10 @@ import (
 	v1 "rusi/pkg/proto/runtime/v1"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"k8s.io/klog/v2"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -481,16 +482,11 @@ func startServer(t *testing.T, ctx context.Context, publishHandler messaging.Pub
 	grpcServer := grpc.NewServer()
 	v1.RegisterRusiServer(grpcServer, server)
 
-	serveErr := make(chan error, 1)
 	go func() {
-		serveErr <- grpcServer.Serve(lis)
-	}()
-	t.Cleanup(func() {
-		grpcServer.Stop()
-		if err := <-serveErr; err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			t.Errorf("Server exited with error: %v", err)
+		if err := grpcServer.Serve(lis); err != nil {
+			t.Fatalf("Server exited with error: %v", err)
 		}
-	})
+	}()
 	return server
 }
 func bufDialer(context.Context, string) (net.Conn, error) {
