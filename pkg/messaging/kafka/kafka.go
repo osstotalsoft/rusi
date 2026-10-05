@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
@@ -35,6 +36,10 @@ type kafkaPubSub struct {
 	config   *sarama.Config
 	client   sarama.Client
 	producer sarama.SyncProducer
+
+	mu            sync.Mutex
+	subscriptions map[int]messaging.CloseFunc
+	nextSubID     int
 }
 
 // NewKafkaPubSub returns a new Kafka pub-sub implementation
@@ -158,22 +163,38 @@ func (k *kafkaPubSub) Subscribe(topic string, handler messaging.Handler, options
 					return
 				}
 				klog.ErrorS(err, "kafka: consume error", "topic", topic, "group", group)
+				select {
+				case <-ctx.Done():
+				case <-time.After(time.Second):
+				}
 			}
 		}
 	}()
 
 	klog.InfoS("kafka: subscribed to", "topic", topic, "group", group, "deliverNewOnly", mergedOptions.deliverNewOnly)
 
+	k.mu.Lock()
+	if k.subscriptions == nil {
+		k.subscriptions = map[int]messaging.CloseFunc{}
+	}
+	id := k.nextSubID
+	k.nextSubID++
 	var once sync.Once
-	return func() (closeErr error) {
+	closeFn := func() (closeErr error) {
 		once.Do(func() {
 			cancel()
 			closeErr = consumerGroup.Close()
 			wg.Wait()
+			k.mu.Lock()
+			delete(k.subscriptions, id)
+			k.mu.Unlock()
 			klog.Infof("kafka: unsubscribed from topic %s", topic)
 		})
 		return
-	}, nil
+	}
+	k.subscriptions[id] = closeFn
+	k.mu.Unlock()
+	return closeFn, nil
 }
 
 type groupHandler struct {
@@ -215,6 +236,15 @@ func (h *groupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 
 func (k *kafkaPubSub) Close() error {
 	var errs []error
+	k.mu.Lock()
+	subs := make([]messaging.CloseFunc, 0, len(k.subscriptions))
+	for _, c := range k.subscriptions {
+		subs = append(subs, c)
+	}
+	k.mu.Unlock()
+	for _, c := range subs {
+		errs = append(errs, c())
+	}
 	if k.producer != nil {
 		errs = append(errs, k.producer.Close())
 	}
