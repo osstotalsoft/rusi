@@ -67,6 +67,22 @@ In Kubernetes mode Rusi will query the kubernetes api in order to find and regis
       - name: durableSubscriptionName
         value: "" # Optional.
     ```
+
+    Kafka is also available (`pubsub.kafka`, see `examples/components/comp-kafka.yaml`):
+    ```yaml
+    spec:
+      type: pubsub.kafka
+      version: v1
+      metadata:
+      - name: bootstrapServers
+        value: "broker1:9092,broker2:9092" # Required.
+      - name: groupId
+        value: "" # Optional. Defaults to the app id.
+    ```
+    Subscription options: `qGroup` (default true) shares the consumer group; false gives each subscriber its own group.
+    `deliverNewMessagesOnly` (default true) picks the start offset for a new group (newest vs oldest).
+    Each partition is processed sequentially and its offset is committed after the handler returns, including on handler error
+    (Kafka has no per-message redelivery). `durable`, `maxConcurrentMessages` and `ackWaitTime` are ignored.
    
 2. Add custom middlewares (optional)
     ```yaml

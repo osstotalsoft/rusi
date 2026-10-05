@@ -1,0 +1,13 @@
+apiVersion: rusi.io/v1alpha1
+kind: Component
+metadata:
+  name: kafka-pubsub
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+    - name: bootstrapServers
+      value: "kafka-broker1:9092,kafka-broker2:9092"
+    # optional; defaults to the rusi app id (consumerID)
+    - name: groupId
+      value: my-app
