@@ -173,17 +173,20 @@ func (n *jetStreamPubSub) Subscribe(topic string, handler messaging.Handler, opt
 	js, _ := jetstream.New(n.natsConn)
 	cc := jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy}
 	cc.InactiveThreshold = time.Hour
+	// consumer names cannot contain dots
 	consumerName := strings.ReplaceAll(mergedOptions.consumerID+"__"+topic, ".", "_")
-	switch {
-	case mergedOptions.queueGroup && mergedOptions.durableSubscriptionName != "":
-		cc.Durable = strings.ReplaceAll(mergedOptions.durableSubscriptionName+"__"+topic, ".", "_")
-	case mergedOptions.queueGroup:
-		// ephemeral consumer shared by every subscriber with the same consumer ID: subscribers compete
-		cc.Name = consumerName
-	default:
-		// A durable consumer is shared by every subscriber with the same consumer ID, so it cannot fan out.
-		// Without a queue group every subscriber gets its own ephemeral consumer and receives every message.
-		if mergedOptions.durableSubscriptionName != "" {
+	durable := mergedOptions.durableSubscriptionName != ""
+	if mergedOptions.queueGroup {
+		// Subscribers share one consumer and compete for its messages.
+		if durable {
+			cc.Durable = strings.ReplaceAll(mergedOptions.durableSubscriptionName+"__"+topic, ".", "_")
+		} else {
+			cc.Name = consumerName
+		}
+	} else {
+		// Each subscriber gets its own ephemeral consumer and receives every message.
+		// A durable consumer would be shared by all subscribers and could not fan out, so durable is ignored.
+		if durable {
 			klog.Warningf("jetStream: durable is ignored for the subscription to %s because qGroup is false: "+
 				"each subscriber gets its own ephemeral consumer and receives every message, "+
 				"but messages published while it is not running are not delivered to it", topic)
