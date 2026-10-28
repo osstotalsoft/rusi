@@ -2,11 +2,13 @@ package jetstream
 
 import (
 	"context"
+	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"reflect"
 	"rusi/pkg/messaging"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -43,7 +45,7 @@ func Test_jetStreamPubSub_parseMetadata(t *testing.T) {
 				consumerID: "consumerID",
 			},
 			options{natsURL: "nats://foo.bar:4222", connectWait: nats.DefaultTimeout,
-				durableSubscriptionName: "consumerID"},
+				consumerID: "consumerID", durableSubscriptionName: "consumerID", queueGroup: true},
 			false,
 		},
 	}
@@ -81,7 +83,9 @@ func Test_jetStreamPubSub_Subscribe_serial_messages(t *testing.T) {
 
 	sut := &jetStreamPubSub{
 		options: options{
+			consumerID:              "consumerID",
 			durableSubscriptionName: "consumerID",
+			queueGroup:              true,
 			ackWaitTime:             time.Second,
 			maxInFlight:             1,
 		},
@@ -161,7 +165,9 @@ func Test_jetStreamPubSub_Subscribe_two_concurrent_messages(t *testing.T) {
 
 	sut := &jetStreamPubSub{
 		options: options{
+			consumerID:              "consumerID",
 			durableSubscriptionName: "consumerID",
+			queueGroup:              true,
 			ackWaitTime:             time.Second,
 			maxInFlight:             1,
 		},
@@ -228,5 +234,119 @@ func Test_jetStreamPubSub_Subscribe_two_concurrent_messages(t *testing.T) {
 	err = sut.Close()
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
+	}
+}
+
+func Test_jetStreamPubSub_Subscribe_queue_group(t *testing.T) {
+	tests := []struct {
+		name            string
+		durable         bool
+		qGroup          bool
+		wantPerSub      int // messages each subscriber gets; 0 means the subscribers share them
+		wantDurableName string
+	}{
+		{"durable in queue group competes", true, true, 0, "consumerID__test_topic"},
+		{"ephemeral in queue group competes", false, true, 0, ""},
+		{"ephemeral without queue group fans out", false, false, 10, ""},
+		{"durable without queue group fans out as ephemeral", true, false, 10, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := RunBasicJetStreamServer()
+			defer shutdownJSServerAndRemoveStorage(t, srv)
+			natsConn, err := nats.Connect(srv.ClientURL())
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			defer natsConn.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			js, err := jetstream.New(natsConn)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			stream, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "foo", Subjects: []string{"test.*"}})
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			sut := &jetStreamPubSub{
+				options: options{
+					consumerID:              "consumerID",
+					durableSubscriptionName: "consumerID",
+					queueGroup:              true,
+					ackWaitTime:             time.Second,
+					maxInFlight:             1,
+				},
+				natsConn: natsConn,
+				ctx:      ctx,
+				cancel:   cancel,
+			}
+
+			subject := "test.topic"
+			const published = 10
+			var counts [2]atomic.Int32
+			var unsubs []messaging.CloseFunc
+			for i := range counts {
+				unsub, err := sut.Subscribe(subject, func(ctx context.Context, msg *messaging.MessageEnvelope) error {
+					counts[i].Add(1)
+					return nil
+				}, &messaging.SubscriptionOptions{Durable: Ptr(tt.durable), QGroup: Ptr(tt.qGroup), DeliverNewMessagesOnly: Ptr(true)})
+				if err != nil {
+					t.Fatalf("Expected no error, got %v", err)
+				}
+				unsubs = append(unsubs, unsub)
+			}
+
+			for i := 0; i < published; i++ {
+				_ = sut.Publish(subject, &messaging.MessageEnvelope{Payload: "test"})
+			}
+
+			wantTotal := published
+			if tt.wantPerSub > 0 {
+				wantTotal = tt.wantPerSub * len(counts)
+			}
+			checkFor(t, 3*time.Second, 50*time.Millisecond, func() error {
+				if got := int(counts[0].Load() + counts[1].Load()); got != wantTotal {
+					return fmt.Errorf("received %d messages, want %d", got, wantTotal)
+				}
+				return nil
+			})
+			if tt.wantPerSub > 0 {
+				for i := range counts {
+					if got := int(counts[i].Load()); got != tt.wantPerSub {
+						t.Errorf("subscriber %d received %d messages, want %d", i, got, tt.wantPerSub)
+					}
+				}
+			}
+
+			var durables []string
+			consumers := 0
+			for info := range stream.ListConsumers(ctx).Info() {
+				consumers++
+				if info.Config.Durable != "" {
+					durables = append(durables, info.Config.Durable)
+				}
+			}
+			wantConsumers := 1
+			if !tt.qGroup {
+				wantConsumers = len(counts)
+			}
+			if consumers != wantConsumers {
+				t.Errorf("got %d consumers, want %d", consumers, wantConsumers)
+			}
+			if tt.wantDurableName == "" && len(durables) > 0 {
+				t.Errorf("got durable consumers %v, want none", durables)
+			}
+			if tt.wantDurableName != "" && (len(durables) != 1 || durables[0] != tt.wantDurableName) {
+				t.Errorf("got durable consumers %v, want [%s]", durables, tt.wantDurableName)
+			}
+
+			for _, unsub := range unsubs {
+				_ = unsub()
+			}
+		})
 	}
 }
